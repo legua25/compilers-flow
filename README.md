@@ -1,6 +1,6 @@
 # Compilers project
 
-Programming language for compilers course.
+Programming language for compilers course, strongly inspired by Scala.
 
 # Specification
 
