@@ -100,7 +100,7 @@ val double = (i: Int) => 2 * i
 ### Basic types:
 
 <!-- add algebraic structures into type system like Numeric (Group / Monoid ... ?) -->
-`Bool`, `Byte`, `Int`, `Float`, `Char`, `String`
+`Unit`, `Bool`, `Byte`, `Int`, `Float`, `Char`, `String`
 
 <!-- ### Advanced types:
 
