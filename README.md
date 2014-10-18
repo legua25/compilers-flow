@@ -1,4 +1,4 @@
-# Compilers project
+# Flow
 
 Programming language for compilers course, strongly inspired by Scala.
 
