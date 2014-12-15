@@ -7,45 +7,29 @@ prog
   ;
 
 stat
-  : def
-  | expr
-  ;
-
-expr
-  : '{' block '}'
-  | If '(' expr ')' Nl? expr (Nl? Else Nl? expr)?
-  | While '(' expr ')' Nl? expr
-  | literal
-  | Id
-  ;
-
-block
-  : Nl* blockStat (semi blockStat)* Nl*
-  |
-  ;
-
-blockStat
-  : valDef
-  | expr
-  ;
-
-def
-  : valDef
+  : expr
   | defDef
   ;
 
-valDef
-  : Var defRest
-  | Val defRest
+expr
+  : varDef                                                           # varDefExpr
+  | '{' block '}'                                                    # blockExpr
+  | If '(' cond=expr ')' Nl? thenE=expr (Nl? Else Nl? elseE=expr)?   # branch
+  | While '(' cond=expr ')' Nl? body=expr                            # while
+  | Id '=' expr                                                      # assignment
+  | Id '(' args? ')'                                                 # call
+  | literal                                                          # literalExpr
+  | Id                                                               # id
   ;
 
-defDef
-  : Def defSig typeAnn? '=' Nl? expr
-  | External Def defSig typeAnn
+block
+  : Nl* expr (semi expr)* Nl*
+  |
   ;
 
-defSig
-  : Id paramClause?
+varDef
+  : Var defRest                                                      # varVarDef
+  | Val defRest                                                      # valVarDef
   ;
 
 defRest
@@ -54,11 +38,20 @@ defRest
 
 defPat
   : declIds
-  | '(' declIds ')'
+//  | '(' declIds ')'
   ;
 
 declIds
   : Id (',' Id)* typeAnn?
+  ;
+
+defDef
+  : External Def defSig typeAnn                                      # externalDef
+  | Def defSig typeAnn? '=' Nl? expr                                 # internalDef
+  ;
+
+defSig
+  : Id paramClause?
   ;
 
 paramClause
@@ -70,19 +63,23 @@ params
   ;
 
 param
-  : Id typeAnn
+  : Id typeAnn Star?
   ;
 
 typeAnn
   : ':' Id
   ;
 
+args
+  : expr (',' expr)*
+  ;
+
 literal
-  : BoolLiteral
-  | CharLiteral
-  | StringLiteral
-  | '-'? IntLiteral
-  | '-'? FloatLiteral
+  : BoolLiteral                                                      # bool
+  | CharLiteral                                                      # Char
+  | StringLiteral                                                    # String
+  | '-'? IntLiteral                                                  # Int
+  | '-'? FloatLiteral                                                # Float
   ;
 
 semi
@@ -105,8 +102,16 @@ Def
   : 'def'
   ;
 
+Star
+  : '*'
+  ;
+
 External
   : 'external'
+  ;
+
+Type
+  : 'type'
   ;
 
 If
@@ -144,14 +149,6 @@ FloatLiteral
 
 Id
   : [a-zA-Z_][a-zA-Z_0-9]*
-  ;
-
-Paren
-  : '(' | ')' | '[' | ']' | '{' | '}'
-  ;
-
-Delim
-  : '\'' | '"' | '.' | ';' | ','
   ;
 
 Nl
