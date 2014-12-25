@@ -2,172 +2,122 @@ grammar Flow;
 
 // parser
 
-prog
-  : Nl* stat (semi stat)* Nl*
+program
+  : statement (semi statement)*
   ;
 
-stat
-  : expr
-  | defDef
-  ;
-
-expr
-  : varDef                                                           # varDefExpr
-  | '{' block '}'                                                    # blockExpr
-  | If '(' cond=expr ')' Nl? thenE=expr (Nl? Else Nl? elseE=expr)?   # branch
-  | While '(' cond=expr ')' Nl? body=expr                            # while
-  | Id '=' expr                                                      # assignment
-  | Id '(' args? ')'                                                 # call
-  | literal                                                          # literalExpr
-  | Id                                                               # id
-  ;
-
-block
-  : Nl* expr (semi expr)* Nl*
+statement
+  : expression
   |
   ;
 
-varDef
-  : Var defRest                                                      # varVarDef
-  | Val defRest                                                      # valVarDef
+expression
+  : expression ID expression                                                    # InfixExpr
+  | ID '(' arguments? ')'                                                       # Call
+  | ID                                                                          # Id
+  | literal                                                                     # LiteralExpr
+  | '(' expression ')'                                                          # Parenthesized
   ;
 
-defRest
-  : defPat '=' expr
+infixExpression
+  : expression ID expression
   ;
 
-defPat
-  : declIds
-//  | '(' declIds ')'
-  ;
-
-declIds
-  : Id (',' Id)* typeAnn?
-  ;
-
-defDef
-  : External Def defSig typeAnn                                      # externalDef
-  | Def defSig typeAnn? '=' Nl? expr                                 # internalDef
-  ;
-
-defSig
-  : Id paramClause?
-  ;
-
-paramClause
-  : '(' params? ')'
-  ;
-
-params
-  : param (',' param)*
-  ;
-
-param
-  : Id typeAnn Star?
-  ;
-
-typeAnn
-  : ':' Id
-  ;
-
-args
-  : expr (',' expr)*
+arguments
+  : expression (',' expression)*
   ;
 
 literal
-  : BoolLiteral                                                      # bool
-  | CharLiteral                                                      # Char
-  | StringLiteral                                                    # String
-  | '-'? IntLiteral                                                  # Int
-  | '-'? FloatLiteral                                                # Float
+  : BOOL                                                                        # Bool
+  | CHAR                                                                        # Char
+  | STRING                                                                      # String
+  | '-'? intt                                                                   # Int
+  | '-'? FLOAT                                                                  # Float
   ;
 
 semi
   : ';'
-  | Nl+
+  | NL+
+  ;
+
+intt
+  : DECIMAL                                                                     # Decimal
+  | HEXADECIMAL                                                                 # HexaDecimal
+  | OCTAL                                                                       # Octal
+  | BINARY                                                                      # Binary
   ;
 
 
 // lexer
 
-Var
-  : 'var'
-  ;
-
-Val
-  : 'val'
-  ;
-
-Def
-  : 'def'
-  ;
-
-Star
-  : '*'
-  ;
-
-External
-  : 'external'
-  ;
-
-Type
-  : 'type'
-  ;
-
-If
-  : 'if'
-  ;
-
-Else
-  : 'else'
-  ;
-
-While
-  : 'while'
-  ;
-
-BoolLiteral
+BOOL
   : 'true'
   | 'false'
   ;
 
-CharLiteral
-  : '\'' CharElem '\''
+CHAR
+  : '\'' CHARELEM '\''
   ;
 
-StringLiteral
-  : '"' StringElem* '"'
+STRING
+  : '"' STRINGELEM* '"'
   ;
 
-IntLiteral
-  : Number
+DECIMAL
+  : '0'
+  | NONZERODIGIT DIGIT*
   ;
 
-FloatLiteral
-  : Number ('.' Digit*)? ('e' Number)? 'f'?
+HEXADECIMAL
+  : '0x' HEXDIGIT+
   ;
 
-Id
-  : [a-zA-Z_][a-zA-Z_0-9]*
+OCTAL
+  : '0' OCTDIGIT+
   ;
 
-Nl
+BINARY
+  : '0b' BINDIGIT+
+  ;
+
+FLOAT
+  : DECIMAL ('.' DIGIT*)? ('e' DECIMAL)? 'f'?
+  ;
+
+ID
+  : IDSTART IDREST*
+  | OP
+  ;
+
+OP
+  : OPCHAR+
+  ;
+
+NL
   : '\r'? '\n'
   | '\r'
   ;
 
-Ws
+WHITESPACE
   : [ \t]+ -> skip
   ;
 
-Comment
+COMMENT
   : ('/*' .*? '*/'
-  | '//' .*? Nl) -> skip
+  | '//' .*? NL) -> skip
   ;
 
-fragment CharElem         : ~'\'' | CharEscapeSeq;
-fragment StringElem       : ~('"' | '\n' | '\r') | CharEscapeSeq;
-fragment CharEscapeSeq    : '\\' ('b' | 't' | 'n' | 'f' | 'r' | '"' | '\'' | '\\');
-fragment Number           : '0' | NonZeroDigit Digit*;
-fragment NonZeroDigit     : '1' .. '9';
-fragment Digit            : '0' .. '9';
+fragment LETTER           : 'a' .. 'z' | 'A .. Z' | '\u00C0' .. '\uFFFF';
+fragment NONZERODIGIT     : '1' .. '9';
+fragment DIGIT            : '0' .. '9';
+fragment HEXDIGIT         : '0' .. '9' | 'a' .. 'f' | 'A' .. 'F';
+fragment OCTDIGIT         : '0' .. '7';
+fragment BINDIGIT         : '0' .. '1';
+
+fragment IDSTART          : LETTER | '_';
+fragment IDREST           : IDSTART | DIGIT;
+fragment OPCHAR           : [!#$%&*+\-/:<=>?@\\^_|~] | '\u00A1' .. '\u00AC' | '\u00AE' .. '\u00BF';
+
+fragment CHARELEM         : ~'\'' | CHARESCAPESEQ;
+fragment STRINGELEM       : ~('"' | '\n' | '\r') | CHARESCAPESEQ;
+fragment CHARESCAPESEQ    : '\\' ('b' | 't' | 'n' | 'f' | 'r' | '"' | '\'' | '\\');

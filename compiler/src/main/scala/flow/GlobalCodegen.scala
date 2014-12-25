@@ -7,8 +7,10 @@ import llvm._
 trait GlobalCodegen extends BlockCodegen {
   val definitionList = mutable.ListBuffer.empty[Definition]
 
-  def define(function: Function) =
+  def define(function: Function) = {
     definitionList += GlobalDefinition(function)
+    GlobalReference(function.returnType, function.name)
+  }
 
   def definitions = {
     val sortedDefinitions = definitionList sortBy {

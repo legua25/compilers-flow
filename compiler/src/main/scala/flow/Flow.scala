@@ -4,6 +4,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.PrintWriter
 
+import scala.sys.process._
+
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
 
@@ -36,14 +38,16 @@ object Flow extends Compiler {
     val lexer = new FlowLexer(antlrInput)
     val tokens = new CommonTokenStream(lexer)
     val parser = new FlowParser(tokens)
-    val tree = parser.prog()
+    val tree = parser.program()
 
-    val program = new AstVisitor().visit(tree).asInstanceOf[Program]
+    val program = new AstVisitor().visit(tree).asInstanceOf[Program]; println(program)
     val module = compile(inputFile, program)
 
     val printer = new PrintWriter(output)
 
     printer.println(module.llvm)
     printer.close()
+
+    s"./optnrun.sh $outputFile".!
   }
 }

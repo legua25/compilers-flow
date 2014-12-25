@@ -25,20 +25,20 @@ abstract class UntypedConstant(val repr: String) extends Constant {
 }
 
 object Constant {
-  
+
   case object True extends TypedConstant(Type.Int(1), "true")
-  
+
   case object False extends TypedConstant(Type.Int(1), "false")
 
-  case class Int(override val aType: Type.Int, value: scala.Int)
-    extends TypedConstant(aType, value.toString)
-  
-  case class Float(override val aType: FloatingPointType, value: scala.Float)
-    extends TypedConstant(aType, value.toString)
+  case class Int(override val aType: Type.Int, value: String)
+    extends TypedConstant(aType, value)
+
+  case class Float(override val aType: FloatingPointType, value: String)
+    extends TypedConstant(aType, value)
 
   case class Null[A <: Type](override val aType: Type.Pointer[A])
     extends TypedConstant(aType, "null")
-  
+
   private def makeStructRepr(elements: Seq[Constant], isPacked: Boolean): String = {
     val (open, close) = if (isPacked) ("<{", "}>") else ("{", "}")
     elements.map(_.typedRepr).mkString(open, ", ", close)
@@ -52,13 +52,13 @@ object Constant {
 
   case class Vector(elements: Seq[Constant])
     extends UntypedConstant(elements.map(_.typedRepr).mkString("<", ", ", ">"))
-    
+
   case object ZeroInitializer extends UntypedConstant("zeroinitializer")
-  
+
   case object Undef extends UntypedConstant("undef")
 
-//  case class BlockAddress(functionName: Name, blockName: Name)
-//    extends Constant]
+  //  case class BlockAddress(functionName: Name, blockName: Name)
+  //    extends Constant]
 
 }
 
