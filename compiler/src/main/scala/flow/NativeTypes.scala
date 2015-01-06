@@ -1,18 +1,119 @@
 package flow
 
-import llvm._
+import ast.{ Parameter => _, _ }
+import llvm.{ IntegerPredicate => IP, _ }
 
-case class NativeDef(returnType: Type, body: Seq[Operand] => Operand)
+trait NativeTypes {
+  self: GlobalCodegen =>
+  import NativeTypes._
 
-trait NativeTypes { self: BlockCodegen =>
-  val Bool = llvm.Type.Int(1)
-  val Char = llvm.Type.Int(8)
-  val Int = llvm.Type.Int(64)
-  val Float = llvm.Type.Double
+  val intPrint =
+    define(
+      Function(
+        returnType = Unit.toLlvm,
+        name = "Int_print",
+        parameters = Seq(Parameter(Int.toLlvm))))
 
-  val nativeTypes = Map(
-    "Int" -> Map(
-      "+" -> NativeDef(Int, {
-        case Seq(a, b) => instruction(Int, Add(a, b))
+  val floatPrint =
+    define(
+      Function(
+        returnType = Unit.toLlvm,
+        name = "Float_print",
+        parameters = Seq(Parameter(Float.toLlvm))))
+
+  val unitPrint =
+    define(
+      Function(
+        returnType = Unit.toLlvm,
+        name = "Unit_print",
+        parameters = Seq()))
+
+  def nativeTypeFor(name: String): Type = name match {
+    case "Bool"  => Bool
+    case "Char"  => Char
+    case "Int"   => Int
+    case "Float" => Float
+    case "Unit"  => Unit
+    case _       => error(s"Native type $name does not exist.")
+  }
+
+  val nativeTypes = Seq[(Type, Seq[FunDef])](
+    Int -> Seq(
+      NativeFunDef("+", Seq(Int), Int, {
+        case Seq(a, b) => instruction(Int.toLlvm, Add(a, b))
+      }),
+      NativeFunDef("-", Seq(Int), Int, {
+        case Seq(a, b) => instruction(Int.toLlvm, Sub(a, b))
+      }),
+      NativeFunDef("*", Seq(Int), Int, {
+        case Seq(a, b) => instruction(Int.toLlvm, Mul(a, b))
+      }),
+      NativeFunDef("/", Seq(Int), Int, {
+        case Seq(a, b) => instruction(Int.toLlvm, SDiv(a, b))
+      }),
+      NativeFunDef("toFloat", Seq(), Float, {
+        case Seq(a) => instruction(Float.toLlvm, SIToFP(a, Float.toLlvm))
+      }),
+      NativeFunDef("<", Seq(Int), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.SLT, a, b))
+      }),
+      NativeFunDef("print", Seq(), Unit, {
+        case Seq(a) =>
+          instruction(Call(intPrint, Seq((a, Seq()))))
+          unit
+      })),
+    Float -> Seq(
+      NativeFunDef("+", Seq(Float), Float, {
+        case Seq(a, b) => instruction(Float.toLlvm, FAdd(a, b))
+      }),
+      NativeFunDef("-", Seq(Float), Float, {
+        case Seq(a, b) => instruction(Float.toLlvm, FSub(a, b))
+      }),
+      NativeFunDef("*", Seq(Float), Float, {
+        case Seq(a, b) => instruction(Float.toLlvm, FMul(a, b))
+      }),
+      NativeFunDef("/", Seq(Float), Float, {
+        case Seq(a, b) => instruction(Float.toLlvm, FDiv(a, b))
+      }),
+      NativeFunDef("floor", Seq(), Int, {
+        case Seq(a) => instruction(Int.toLlvm, FPToSI(a, Int.toLlvm))
+      }),
+      NativeFunDef("print", Seq(), Unit, {
+        case Seq(a) =>
+          instruction(Call(floatPrint, Seq((a, Seq()))))
+          unit
+      })),
+    Unit -> Seq(
+      NativeFunDef("print", Seq(), Unit, {
+        case Seq(u) =>
+          instruction(Call(unitPrint, Seq()))
+          unit
       })))
+    .map({ case (t, defs) => t -> TypeDef(t.name, t, defs.map(fd => fd.signature -> fd).toMap) })
+    .toMap
+
+  def constantBool(value: Boolean) =
+    if (value) llvm.Constant.True
+    else llvm.Constant.False
+
+  def constantChar(value: Char) =
+    llvm.Constant.Int(Char.toLlvm, value.toInt.toString)
+
+  def constantInt(value: BigInt) =
+    llvm.Constant.Int(Int.toLlvm, value.toString)
+
+  def constantFloat(value: String) =
+    llvm.Constant.Float(Float.toLlvm, value)
+
+  def unit =
+    constantBool(true)
+
+}
+
+object NativeTypes {
+  val Bool = NativeType("Bool", llvm.Type.Int(1))
+  val Char = NativeType("Char", llvm.Type.Int(8))
+  val Int = NativeType("Int", llvm.Type.Int(64))
+  val Float = NativeType("Float", llvm.Type.Double)
+  val Unit = NativeType("Unit", llvm.Type.Int(1))
 }

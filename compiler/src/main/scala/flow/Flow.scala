@@ -3,15 +3,18 @@ package flow
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.PrintWriter
+import java.util.Arrays
 
 import scala.sys.process._
 
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.tree.gui.TreeViewer
 
 import ast._
 
 object Flow extends Compiler {
+
   def namePrefixOf(fileName: String) = {
     fileName.lastIndexOf('.') match {
       case -1 => fileName
@@ -32,7 +35,7 @@ object Flow extends Compiler {
     val input = new FileInputStream(inputFile)
     val output = new FileOutputStream(outputFile)
 
-    println(s"Compiling $inputFile to $outputFile")
+    println(s"Parsing $inputFile")
 
     val antlrInput = new ANTLRInputStream(input)
     val lexer = new FlowLexer(antlrInput)
@@ -40,7 +43,13 @@ object Flow extends Compiler {
     val parser = new FlowParser(tokens)
     val tree = parser.program()
 
-    val program = new AstVisitor().visit(tree).asInstanceOf[Program]; println(program)
+    val program = new AstVisitor().visit(tree).asInstanceOf[Program]
+
+    //    new TreeViewer(Arrays.asList(parser.getRuleNames: _*), tree).open()
+    //    println(program)
+
+    println(s"Compiling to $outputFile")
+
     val module = compile(inputFile, program)
 
     val printer = new PrintWriter(output)
@@ -50,4 +59,5 @@ object Flow extends Compiler {
 
     s"./optnrun.sh $outputFile".!
   }
+
 }

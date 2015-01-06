@@ -4,7 +4,8 @@ import scala.collection.mutable
 
 import llvm._
 
-class BlockState(name: String) {
+class BlockState(val name: String) {
+
   val instructions = mutable.ListBuffer.empty[(Option[String], Instruction)]
   var terminator = Option.empty[Terminator]
 
@@ -14,36 +15,43 @@ class BlockState(name: String) {
 
     BasicBlock(name, instructions.toList, terminator.get)
   }
+
 }
 
 trait BlockCodegen {
-  val blockFor = mutable.Map.empty[String, BlockState]
-  val blocks = mutable.ListBuffer.empty[BlockState]
 
-  var currentBlock: BlockState = _
+  private val blockFor = mutable.Map.empty[String, BlockState]
+  private val blocks = mutable.ListBuffer.empty[BlockState]
 
-  var unnamedCount = 0
+  private var _currentBlock: BlockState = _
 
-  def newUnnamed() = {
-    val n = unnamedCount
-    unnamedCount += 1
+  private var nrOfLocals = 0
+
+  def newLocalName() = {
+    val n = nrOfLocals
+    nrOfLocals += 1
     s".$n"
   }
 
-  def uniqueBlockName(name0: String) = {
+  private def uniqueBlockName(name0: String) = {
     if (!blockFor.isDefinedAt(name0)) {
       name0
     }
     else {
       var i = 0
-      var name = name0 + i
-      while (!blockFor.isDefinedAt(name)) {
-        i += 1
+      var name: String = null
+
+      do {
         name = name0 + i
-      }
+        i += 1
+      } while (blockFor.isDefinedAt(name))
+
       name
     }
   }
+
+  def currentBlock =
+    _currentBlock.name
 
   def newBlock(name0: String) = {
     val name = uniqueBlockName(name0)
@@ -57,7 +65,7 @@ trait BlockCodegen {
     if (!blockFor.isDefinedAt(name))
       error(s"Undefined block: $name")
 
-    currentBlock = blockFor(name)
+    _currentBlock = blockFor(name)
   }
 
   def makeBasicBlocks() = {
@@ -65,28 +73,30 @@ trait BlockCodegen {
 
     blockFor.clear()
     blocks.clear()
-    currentBlock = null
-    unnamedCount = 0
+    _currentBlock = null
+    nrOfLocals = 0
 
     result
   }
 
   def instruction(instr: Instruction): Unit = {
-    if (currentBlock.terminator.isEmpty)
-      currentBlock.instructions += ((None, instr))
+    _currentBlock.instructions += ((None, instr))
   }
 
-  def instruction(aType: Type, instr: Instruction) = {
-    val n = newUnnamed()
+  def instruction(aType: llvm.Type, instr: Instruction) = {
+    val n = newLocalName()
 
-    if (currentBlock.terminator.isEmpty)
-      currentBlock.instructions += ((Some(n), instr))
+    if (_currentBlock.terminator.isEmpty)
+      _currentBlock.instructions += ((Some(n), instr))
 
     LocalReference(aType, n)
   }
 
   def terminator(term: Terminator) = {
-    if (!currentBlock.terminator.isDefined)
-      currentBlock.terminator = Some(term)
+    if (_currentBlock.terminator.isDefined)
+      error(s"${_currentBlock.name} is already terminated.")
+
+    _currentBlock.terminator = Some(term)
   }
+
 }

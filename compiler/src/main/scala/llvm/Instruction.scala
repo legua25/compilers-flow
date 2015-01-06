@@ -329,7 +329,7 @@ case class Xor(
 
 case class Alloca(
   aType: Type,
-  nrOfElements: Option[Operand],
+  nrOfElements: Option[Operand] = None,
   alignment: Int = 0) extends Instruction {
 
   def llvm = {
@@ -419,31 +419,31 @@ case class SExt(operand: Operand, targetType: Type)
   extends ConvertingInstruction("sext")
 
 case class FPToUI(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("fptoui")
 
 case class FPToSI(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("fptosi")
 
 case class UIToFP(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("uitofp")
 
 case class SIToFP(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("sitofp")
 
 case class FPTrunc(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("fptrunc")
 
 case class FPExt(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("fpext")
 
 case class PtrToInt(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("ptrtoint")
 
 case class IntToPtr(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("inttoptr")
 
 case class BitCast(operand: Operand, targetType: Type)
-  extends ConvertingInstruction("sext")
+  extends ConvertingInstruction("bitcast")
 
 //case class AddrSpaceCast(
 //  operand0: Operand,

@@ -5,11 +5,25 @@ import scala.collection.mutable
 import llvm._
 
 trait GlobalCodegen extends BlockCodegen {
-  val definitionList = mutable.ListBuffer.empty[Definition]
 
-  def define(function: Function) = {
+  private val definitionList = mutable.ListBuffer.empty[Definition]
+
+  private var nrOfGlobals = 0
+
+  def newGlobalName() = {
+    val n = nrOfGlobals
+    nrOfGlobals += 1
+    s".$n"
+  }
+
+  def define(function: llvm.Function) = {
     definitionList += GlobalDefinition(function)
     GlobalReference(function.returnType, function.name)
+  }
+
+  def define(variable: GlobalVariable) = {
+    definitionList += GlobalDefinition(variable)
+    GlobalReference(variable.aType.pointer, variable.name)
   }
 
   def definitions = {
@@ -26,4 +40,5 @@ trait GlobalCodegen extends BlockCodegen {
 
   def module(name: String) =
     Module(name, definitions)
+
 }

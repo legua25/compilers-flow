@@ -137,7 +137,7 @@ case class Function(
   }
 }
 
-case class Parameter(aType: FirstClassType, name: Name, attributes: Seq[ParameterAttribute] = Seq())
+case class Parameter(aType: Type, name: Name = "", attributes: Seq[ParameterAttribute] = Seq())
 
 case class BasicBlock(
   name: Name,

@@ -7,20 +7,45 @@ program
   ;
 
 statement
-  : expression
-  |
+  : DEF ID parameterClause? typeAnn '=' expression                              # FunDef
+  | complexExpression                                                           # UnusedComplexExpression
+  |                                                                             # EmptyStatement
+  ;
+
+complexExpression
+  : expression                                                                  # UnusedExpression
+  | kw=(VAR|VAL) ID typeAnn '=' expression                                      # VarDef
   ;
 
 expression
-  : expression ID expression                                                    # InfixExpr
-  | ID '(' arguments? ')'                                                       # Call
+  : expression '(' arguments? ')'                                               # Application
+  | IF cond=expression NL? THEN NL? thn=expression
+    (NL? ELSE NL? els=expression)?                                              # If
+  | WHILE cond=expression NL? DO NL? body=expression                            # While
+  | '{' NL* (complexExpression (semi complexExpression)*)? NL* '}'              # Block
   | ID                                                                          # Id
+  | expression '.' ID                                                           # Selection
+  | expression ID expression                                                    # InfixExpr
   | literal                                                                     # LiteralExpr
+  | ID '=' expression                                                           # IdAssignment
+  | expression '.' ID '=' expression                                            # SelectionAssignment
   | '(' expression ')'                                                          # Parenthesized
   ;
 
-infixExpression
-  : expression ID expression
+typeAnn
+  : ':' ID
+  ;
+
+parameterClause
+  : '(' parameters? ')'
+  ;
+
+parameters
+  : parameter (',' parameter)*
+  ;
+
+parameter
+  : ID typeAnn
   ;
 
 arguments
@@ -37,7 +62,7 @@ literal
 
 semi
   : ';'
-  | NL+
+  | NL
   ;
 
 intt
@@ -49,6 +74,15 @@ intt
 
 
 // lexer
+
+VAL   : 'val';
+VAR   : 'var';
+DEF   : 'def';
+IF    : 'if';
+THEN  : 'then';
+ELSE  : 'else';
+WHILE : 'while';
+DO    : 'do';
 
 BOOL
   : 'true'
@@ -81,21 +115,12 @@ BINARY
   ;
 
 FLOAT
-  : DECIMAL ('.' DIGIT*)? ('e' DECIMAL)? 'f'?
+  : DECIMAL ('.' DIGIT+)? ('e' DECIMAL)?
   ;
 
 ID
   : IDSTART IDREST*
-  | OP
-  ;
-
-OP
-  : OPCHAR+
-  ;
-
-NL
-  : '\r'? '\n'
-  | '\r'
+  | OPCHAR+
   ;
 
 WHITESPACE
@@ -104,10 +129,14 @@ WHITESPACE
 
 COMMENT
   : ('/*' .*? '*/'
-  | '//' .*? NL) -> skip
+  | '//' (~('\n'))*) -> skip
   ;
 
-fragment LETTER           : 'a' .. 'z' | 'A .. Z' | '\u00C0' .. '\uFFFF';
+NL
+  : '\r'? '\n'
+  | '\r';
+
+fragment LETTER           : 'a' .. 'z' | 'A' .. 'Z' | '\u00C0' .. '\uFFFF';
 fragment NONZERODIGIT     : '1' .. '9';
 fragment DIGIT            : '0' .. '9';
 fragment HEXDIGIT         : '0' .. '9' | 'a' .. 'f' | 'A' .. 'F';
