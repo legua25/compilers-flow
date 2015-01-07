@@ -13,7 +13,7 @@ class BlockState(val name: String) {
     if (terminator.isEmpty)
       error(s"Unterminated BasicBlock: $name")
 
-    BasicBlock(name, instructions.toList, terminator.get)
+    BasicBlock(name, instructions.toList, terminator.getOrElse(Br(name)))
   }
 
 }
@@ -34,20 +34,15 @@ trait BlockCodegen {
   }
 
   private def uniqueBlockName(name0: String) = {
-    if (!blockFor.isDefinedAt(name0)) {
-      name0
-    }
-    else {
-      var i = 0
-      var name: String = null
+    var name: String = name0
+    var i = 1
 
-      do {
-        name = name0 + i
-        i += 1
-      } while (blockFor.isDefinedAt(name))
-
-      name
+    while (blockFor.isDefinedAt(name)) {
+      name = name0 + i
+      i += 1
     }
+
+    name
   }
 
   def currentBlock =

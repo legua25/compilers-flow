@@ -5,14 +5,19 @@ import FlowParser._
 import ast._
 
 class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
-  override def visitProgram(context: ProgramContext) = {
+  override def visitProgram(context: ProgramContext) =
     Program(context.statement.toList.map(visitStatement).filter(_ != null))
-  }
 
   override def visitStatement(context: StatementContext) =
     visit(context).asInstanceOf[Statement]
 
-  override def visitFunDef(context: FunDefContext) = {
+  override def visitComplexExpression(context: ComplexExpressionContext) =
+    super.visitComplexExpression(context).asInstanceOf[Expression]
+
+  override def visitExpression(context: ExpressionContext) =
+    visit(context).asInstanceOf[Expression]
+
+  override def visitDefn(context: DefnContext) = {
     val name = context.ID.getText()
     val parameters = Option(context.parameterClause) map {
       paramClause =>
@@ -24,22 +29,30 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
     val typeAnn = context.typeAnn.ID.getText()
     val body = visitExpression(context.expression)
 
-    FunDef(name, parameters, typeAnn, body)
+    Definition(name, parameters, typeAnn, body)
   }
 
-  override def visitComplexExpression(context: ComplexExpressionContext) =
-    visit(context).asInstanceOf[Expression]
+  override def visitExternalFun(context: ExternalFunContext) = {
+    val name = context.ID.getText()
+    val parameters = Option(context.parameterClause.parameters) map {
+      parameters =>
+        parameters.parameter.toList.map(visitParameter)
+    } getOrElse Seq()
+    val typeAnn = context.typeAnn.ID.getText()
 
-  override def visitExpression(context: ExpressionContext) =
-    visit(context).asInstanceOf[Expression]
+    ExternalFunction(name, parameters, typeAnn)
+  }
 
-  override def visitVarDef(context: VarDefContext) = {
+  override def visitStaticDef(context: StaticDefContext) =
+    StaticDefinition(visitDefn(context.defn))
+
+  override def visitVariableDefinition(context: VariableDefinitionContext) = {
     val name = context.ID.getText()
     val typeAnn = context.typeAnn.ID.getText()
     val expr = visitExpression(context.expression)
     val isMutable = context.kw.getText() == "var"
 
-    VarDef(name, typeAnn, expr, isMutable)
+    VarDefinition(name, typeAnn, expr, isMutable)
   }
 
   override def visitIf(context: IfContext) = {
@@ -60,7 +73,14 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
   override def visitBlock(context: BlockContext) =
     Block(context.complexExpression.toList.map(visitComplexExpression).filter(_ != null))
 
-  override def visitInfixExpr(context: InfixExprContext) = {
+  //  override def visitPrefixExpression(context: PrefixExpressionContext) = {
+  //    val op = context.ID.getText()
+  //    val expr = visitExpression(context.expression)
+  //
+  //    PrefixExpression(op, expr)
+  //  }
+
+  override def visitInfixExpression(context: InfixExpressionContext) = {
     val expr0 = visitExpression(context.expression(0))
     val expr1 = visitExpression(context.expression(1))
     val op = context.ID.getText()

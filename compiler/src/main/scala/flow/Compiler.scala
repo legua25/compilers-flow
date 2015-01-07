@@ -5,7 +5,9 @@ import NativeTypes._
 import ast._
 import llvm.{ Parameter => _, _ }
 
-trait Compiler extends GlobalCodegen
+trait Compiler
+  extends GlobalCodegen
+  with BlockCodegen
   with NativeTypes
   with DefLookup
   with Scopes {
@@ -13,32 +15,38 @@ trait Compiler extends GlobalCodegen
   def compile(moduleName: String, program: Program): Module = {
     scoped {
       program.statements foreach {
-        case FunDef(name, parameters, typeAnn, _) =>
+        case Definition(name, parameters, typeAnn, _) =>
           val Some(pts) = parameters.map(_.map(p => nativeTypeFor(p.aType)))
+          val lps = pts.map(t => llvm.Parameter(t.toLlvm))
           val rt = nativeTypeFor(typeAnn)
-          scope.declare(name, pts, rt)
-        case VarDef(name, typeAnn, _, isMutable) =>
+          val ref = define(
+            llvm.Function(
+              returnType = rt.toLlvm,
+              name = name,
+              parameters = lps))
+          scope.put(Function(name, pts, rt, ref))
+        case VarDefinition(name, typeAnn, _, isMutable) =>
           val t = nativeTypeFor(typeAnn)
-          val g = define(
+          val ref = define(
             llvm.GlobalVariable(
               name = name,
               linkage = llvm.Linkage.Private,
               aType = t.toLlvm,
               initializer = Some(Constant.ZeroInitializer)))
-          scope.put(Variable(name, t, g, isMutable))
+          scope.put(Variable(name, t, isMutable, ref))
         case _ =>
       }
 
       program.statements foreach {
-        case fd @ FunDef(_, _, _, _) => compile(fd)
-        case _                       =>
+        case fd @ Definition(_, _, _, _) => compile(fd)
+        case _                           =>
       }
 
       setBlock(newBlock("entry"))
 
       program.statements foreach {
-        case fd @ FunDef(_, _, _, _) =>
-        case other                   => compile(other)
+        case fd @ Definition(_, _, _, _) =>
+        case other                       => compile(other)
       }
 
       terminator(Ret(Some(Constant.Int(llvm.Type.Int(32), "0"))))
@@ -54,7 +62,7 @@ trait Compiler extends GlobalCodegen
   }
 
   def compile(statement: Statement): Unit = statement match {
-    case FunDef(name, parameters, typeAnn, body) =>
+    case Definition(name, parameters, typeAnn, body) =>
       scoped {
         setBlock(newBlock("entry"))
 
@@ -67,10 +75,10 @@ trait Compiler extends GlobalCodegen
             val pt = lt.pointer
             val localName = newLocalName()
 
-            val pointer = instruction(pt, Alloca(lt))
-            instruction(Store(LocalReference(lt, localName), pointer))
+            val ref = instruction(pt, Alloca(lt))
+            instruction(Store(LocalReference(lt, localName), ref))
 
-            scope.put(Variable(n, t, pointer, false))
+            scope.put(Variable(n, t, false, ref))
 
             llvm.Parameter(lt, localName)
           }
@@ -94,13 +102,13 @@ trait Compiler extends GlobalCodegen
   }
 
   def compile(expression: Expression): (Operand, Type) = expression match {
-    case VarDef(name, typeAnn, expr, isMutable) =>
+    case VarDefinition(name, typeAnn, expr, isMutable) =>
       val declaredType = nativeTypeFor(typeAnn)
 
       if (!scope.isTop) {
         val lt = declaredType.toLlvm
-        val pointer = instruction(lt.pointer, Alloca(lt))
-        scope.put(Variable(name, declaredType, pointer, isMutable))
+        val ref = instruction(lt.pointer, Alloca(lt))
+        scope.put(Variable(name, declaredType, isMutable, ref))
       }
 
       val (operand, actualType) = compile(expr)
@@ -108,8 +116,8 @@ trait Compiler extends GlobalCodegen
       if (actualType != declaredType)
         error(s"Declared type $declaredType does not match actual type $actualType.")
 
-      val Variable(_, _, pointer, _) = scope.variableFor(name)
-      instruction(Store(operand, pointer))
+      val Variable(_, _, _, ref) = scope.variableFor(name)
+      instruction(Store(operand, ref))
 
       (unit, Unit)
 
@@ -126,6 +134,7 @@ trait Compiler extends GlobalCodegen
 
       setBlock(thenBlock)
       val (e0, t0) = compile(thn)
+      val thenContinueBlock = currentBlock
 
       setBlock(elseBlock)
       val (e1, t1) = els match {
@@ -135,6 +144,7 @@ trait Compiler extends GlobalCodegen
         case None =>
           (unit, Unit)
       }
+      val elseContinueBlock = currentBlock
 
       // TODO: type unification
       if (t0 != t1)
@@ -142,19 +152,19 @@ trait Compiler extends GlobalCodegen
 
       setBlock(entryBlock)
       val lt = t0.toLlvm
-      val resPointer = instruction(lt.pointer, Alloca(lt))
+      val resRef = instruction(lt.pointer, Alloca(lt))
       terminator(CondBr(cond, thenBlock, elseBlock))
 
-      setBlock(thenBlock)
-      instruction(Store(e0, resPointer))
+      setBlock(thenContinueBlock)
+      instruction(Store(e0, resRef))
       terminator(Br(continueBlock))
 
-      setBlock(elseBlock)
-      instruction(Store(e1, resPointer))
+      setBlock(elseContinueBlock)
+      instruction(Store(e1, resRef))
       terminator(Br(continueBlock))
 
       setBlock(continueBlock)
-      val result = instruction(lt, Load(resPointer))
+      val result = instruction(lt, Load(resRef))
 
       (result, t0)
 
@@ -197,8 +207,8 @@ trait Compiler extends GlobalCodegen
       }
 
     case Id(name) =>
-      val Variable(_, aType, pointer, _) = scope.variableFor(name)
-      (instruction(aType.toLlvm, Load(pointer)), aType)
+      val Variable(_, aType, _, ref) = scope.variableFor(name)
+      (instruction(aType.toLlvm, Load(ref)), aType)
 
     case Application(Id("print"), Seq(argument)) =>
       val (v, t) = compile(argument)
@@ -232,7 +242,7 @@ trait Compiler extends GlobalCodegen
       (result, resultType)
 
     case Assignment(Id(name), expr) =>
-      val Variable(_, declaredType, pointer, isMutable) = scope.variableFor(name)
+      val Variable(_, declaredType, isMutable, ref) = scope.variableFor(name)
       if (!isMutable)
         error(s"Cannot reassign into val $name.")
 
@@ -241,7 +251,7 @@ trait Compiler extends GlobalCodegen
       if (actualType != declaredType)
         error(s"Cannot assign type $actualType to $declaredType.")
 
-      instruction(Store(o, pointer))
+      instruction(Store(o, ref))
 
       (unit, Unit)
 

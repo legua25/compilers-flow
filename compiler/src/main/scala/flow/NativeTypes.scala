@@ -1,11 +1,18 @@
 package flow
 
 import ast.{ Parameter => _, _ }
-import llvm.{ IntegerPredicate => IP, _ }
+import llvm.{ IntegerPredicate => IP, FloatingPointPredicate => FPP, _ }
 
 trait NativeTypes {
-  self: GlobalCodegen =>
+  self: GlobalCodegen with BlockCodegen =>
   import NativeTypes._
+
+  val boolPrint =
+    define(
+      Function(
+        returnType = Unit.toLlvm,
+        name = "Bool_print",
+        parameters = Seq(Parameter(Bool.toLlvm))))
 
   val intPrint =
     define(
@@ -38,6 +45,12 @@ trait NativeTypes {
   }
 
   val nativeTypes = Seq[(Type, Seq[FunDef])](
+    Bool -> Seq(
+      NativeFunDef("print", Seq(), Unit, {
+        case Seq(a) =>
+          instruction(Call(boolPrint, Seq((a, Seq()))))
+          unit
+      })),
     Int -> Seq(
       NativeFunDef("+", Seq(Int), Int, {
         case Seq(a, b) => instruction(Int.toLlvm, Add(a, b))
@@ -51,11 +64,29 @@ trait NativeTypes {
       NativeFunDef("/", Seq(Int), Int, {
         case Seq(a, b) => instruction(Int.toLlvm, SDiv(a, b))
       }),
-      NativeFunDef("toFloat", Seq(), Float, {
-        case Seq(a) => instruction(Float.toLlvm, SIToFP(a, Float.toLlvm))
+      NativeFunDef("%", Seq(Int), Int, {
+        case Seq(a, b) => instruction(Int.toLlvm, SRem(a, b))
+      }),
+      NativeFunDef("==", Seq(Int), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.EQ, a, b))
+      }),
+      NativeFunDef("!=", Seq(Int), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.NE, a, b))
       }),
       NativeFunDef("<", Seq(Int), Bool, {
         case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.SLT, a, b))
+      }),
+      NativeFunDef("<=", Seq(Int), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.SLE, a, b))
+      }),
+      NativeFunDef(">", Seq(Int), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.SGT, a, b))
+      }),
+      NativeFunDef(">=", Seq(Int), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.SGE, a, b))
+      }),
+      NativeFunDef("toFloat", Seq(), Float, {
+        case Seq(a) => instruction(Float.toLlvm, SIToFP(a, Float.toLlvm))
       }),
       NativeFunDef("print", Seq(), Unit, {
         case Seq(a) =>
@@ -74,6 +105,24 @@ trait NativeTypes {
       }),
       NativeFunDef("/", Seq(Float), Float, {
         case Seq(a, b) => instruction(Float.toLlvm, FDiv(a, b))
+      }),
+      NativeFunDef("==", Seq(Float), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, FCmp(FPP.OEQ, a, b))
+      }),
+      NativeFunDef("!=", Seq(Float), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, FCmp(FPP.ONE, a, b))
+      }),
+      NativeFunDef("<", Seq(Float), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, FCmp(FPP.OLT, a, b))
+      }),
+      NativeFunDef("<=", Seq(Float), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, FCmp(FPP.OLE, a, b))
+      }),
+      NativeFunDef(">", Seq(Float), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, FCmp(FPP.OGT, a, b))
+      }),
+      NativeFunDef(">=", Seq(Float), Bool, {
+        case Seq(a, b) => instruction(Bool.toLlvm, FCmp(FPP.OGE, a, b))
       }),
       NativeFunDef("floor", Seq(), Int, {
         case Seq(a) => instruction(Int.toLlvm, FPToSI(a, Int.toLlvm))

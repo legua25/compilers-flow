@@ -21,7 +21,7 @@ lazy val m = 42             // lazy value, computed at first access *
 #### branching
 
 ```
-if (cond) {
+if cond then {
   ...
 }
 else {
@@ -32,7 +32,7 @@ else {
 #### while loop
 
 ```
-while (cond) {
+while cond do {
   ...
 }
 ```
@@ -40,7 +40,7 @@ while (cond) {
 #### for iteration
 
 ```
-for (element <= iterable) {
+for element <= iterable do {
   ...
 }
 ```
@@ -48,10 +48,10 @@ for (element <= iterable) {
 ##### nested iteration
 
 ```
-for {
+for
   i <= 1 to 10
   j <= i to 10
-} {
+do {
   printLine(i + "," + j)
 }
 ```

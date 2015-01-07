@@ -11,8 +11,8 @@ trait Scopes {
   case class Variable(
     name: String,
     aType: Type,
-    pointer: Operand,
-    isMutable: Boolean) extends CompiledDef
+    isMutable: Boolean,
+    pointer: Operand) extends CompiledDef
 
   case class Function(
     name: String,
@@ -23,12 +23,6 @@ trait Scopes {
   type Scope = mutable.Map[Signature, CompiledDef]
 
   object Scope { def apply(): Scope = mutable.Map() }
-
-  implicit def nameToSignature(name: String): Signature =
-    Signature(name, None)
-
-  implicit def pairToSignature(pair: (String, Seq[Type])): Signature =
-    Signature(pair._1, Some(pair._2))
 
   val scope = new Scopes
 
@@ -102,14 +96,11 @@ trait Scopes {
       current((function.name, function.parameterTypes)) = function
     }
 
-    def declare(name: String, parameterTypes: Seq[Type], resultType: Type) = {
-      put(
-        Function(
-          name,
-          parameterTypes,
-          resultType,
-          GlobalReference(resultType.toLlvm, name)))
-    }
+    implicit def nameToSignature(name: String): Signature =
+      Signature(name, None)
+
+    implicit def pairToSignature(pair: (String, Seq[Type])): Signature =
+      Signature(pair._1, Some(pair._2))
 
   }
 

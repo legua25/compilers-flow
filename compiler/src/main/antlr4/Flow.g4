@@ -3,18 +3,38 @@ grammar Flow;
 // parser
 
 program
-  : statement (semi statement)*
+  : statement (semi statement)* NL* EOF
   ;
 
 statement
-  : DEF ID parameterClause? typeAnn '=' expression                              # FunDef
-  | complexExpression                                                           # UnusedComplexExpression
+  : TYPE ID '=' '{' NL* (memberDefinition (NL+ memberDefinition)*)? NL* '}'     # TypeDefinition
+  | definition                                                                  # DefinitionLabel
+  | complexExpression                                                           # ComplexExpressionLabel
   |                                                                             # EmptyStatement
+  ;
+  
+memberDefinition
+  : definition                                                                  # DefinitionLabel2
+  | STATIC defn                                                                 # StaticDef
+  | variableDefinition                                                          # VarDefLabel
+  ;
+
+definition
+  : defn                                                                        # DefnLabel
+  | EXTERNAL DEF ID parameterClause typeAnn                                     # ExternalFun
+  ;
+
+defn
+  : DEF ID parameterClause? typeAnn '=' NL? expression
+  ;
+
+variableDefinition
+  : kw=(VAR|VAL) ID typeAnn '=' expression
   ;
 
 complexExpression
-  : expression                                                                  # UnusedExpression
-  | kw=(VAR|VAL) ID typeAnn '=' expression                                      # VarDef
+  : expression
+  | variableDefinition
   ;
 
 expression
@@ -25,8 +45,9 @@ expression
   | '{' NL* (complexExpression (semi complexExpression)*)? NL* '}'              # Block
   | ID                                                                          # Id
   | expression '.' ID                                                           # Selection
-  | expression ID expression                                                    # InfixExpr
-  | literal                                                                     # LiteralExpr
+  //| ID expression                                                               # PrefixExpression //'!' | '+' | '-' | '~';
+  | expression ID expression                                                    # InfixExpression
+  | literal                                                                     # LiteralExpression
   | ID '=' expression                                                           # IdAssignment
   | expression '.' ID '=' expression                                            # SelectionAssignment
   | '(' expression ')'                                                          # Parenthesized
@@ -56,8 +77,8 @@ literal
   : BOOL                                                                        # Bool
   | CHAR                                                                        # Char
   | STRING                                                                      # String
-  | '-'? intt                                                                   # Int
-  | '-'? FLOAT                                                                  # Float
+  | intt                                                                        # Int
+  | FLOAT                                                                       # Float
   ;
 
 semi
@@ -75,14 +96,18 @@ intt
 
 // lexer
 
-VAL   : 'val';
-VAR   : 'var';
-DEF   : 'def';
-IF    : 'if';
-THEN  : 'then';
-ELSE  : 'else';
-WHILE : 'while';
-DO    : 'do';
+TYPE     : 'type';
+THIS     : 'this';
+VAL      : 'val';
+VAR      : 'var';
+DEF      : 'def';
+EXTERNAL : 'external';
+STATIC   : 'static';
+IF       : 'if';
+THEN     : 'then';
+ELSE     : 'else';
+WHILE    : 'while';
+DO       : 'do';
 
 BOOL
   : 'true'
@@ -134,7 +159,8 @@ COMMENT
 
 NL
   : '\r'? '\n'
-  | '\r';
+  | '\r'
+  ;
 
 fragment LETTER           : 'a' .. 'z' | 'A' .. 'Z' | '\u00C0' .. '\uFFFF';
 fragment NONZERODIGIT     : '1' .. '9';
@@ -145,6 +171,7 @@ fragment BINDIGIT         : '0' .. '1';
 
 fragment IDSTART          : LETTER | '_';
 fragment IDREST           : IDSTART | DIGIT;
+fragment PREFIXOPCHAR     : '!' | '+' | '-' | '~';
 fragment OPCHAR           : [!#$%&*+\-/:<=>?@\\^_|~] | '\u00A1' .. '\u00AC' | '\u00AE' .. '\u00BF';
 
 fragment CHARELEM         : ~'\'' | CHARESCAPESEQ;

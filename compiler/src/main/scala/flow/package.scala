@@ -4,6 +4,9 @@ package object flow {
 
   def illegal(message: String) =
     throw new IllegalStateException(message)
+
+  def ??? =
+    throw new NotImplementedError("not implemented yet")
 }
 
 package flow {

@@ -1,5 +1,12 @@
 #include <stdio.h>
 
+void Bool_print(int value) {
+  if (value)
+    printf("true\n");
+  else
+    printf("false\n");
+}
+
 void Int_print(long long value) {
   printf("%lld\n", value);
 }
