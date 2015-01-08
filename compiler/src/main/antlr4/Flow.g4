@@ -14,18 +14,22 @@ statement
   ;
   
 memberDefinition
-  : definition                                                                  # DefinitionLabel2
-  | STATIC defn                                                                 # StaticDef
-  | variableDefinition                                                          # VarDefLabel
+  : STATIC? defn                                                                # MemberDef
+  | STATIC? variableDefinition                                                  # MemberVarDef
+  | EXTERNAL STATIC? defnHead                                                   # ExternalMemberDef
   ;
 
 definition
   : defn                                                                        # DefnLabel
-  | EXTERNAL DEF ID parameterClause typeAnn                                     # ExternalFun
+  | EXTERNAL defnHead                                                           # ExternalDef
   ;
 
 defn
-  : DEF ID parameterClause? typeAnn '=' NL? expression
+  : defnHead '=' NL? expression
+  ;
+
+defnHead
+  : DEF ID parameterClause? typeAnn
   ;
 
 variableDefinition
@@ -97,7 +101,6 @@ intt
 // lexer
 
 TYPE     : 'type';
-THIS     : 'this';
 VAL      : 'val';
 VAR      : 'var';
 DEF      : 'def';

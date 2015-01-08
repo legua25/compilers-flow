@@ -1,57 +1,85 @@
 package flow
 
-import ast.{ Parameter => _, _ }
 import llvm.{ IntegerPredicate => IP, FloatingPointPredicate => FPP, _ }
 
-trait NativeTypes {
+object NativeTypes {
+
+  val Bool = NativeType("Bool", llvm.Type.Int(1))
+
+  val Char = NativeType("Char", llvm.Type.Int(8))
+
+  val Int = NativeType("Int", llvm.Type.Int(64))
+
+  val Float = NativeType("Float", llvm.Type.Double)
+
+  val Unit = NativeType("Unit", llvm.Type.Int(1))
+
+  def get(name: String): Option[Type] = name match {
+    case "Bool"  => Some(Bool)
+    case "Char"  => Some(Char)
+    case "Int"   => Some(Int)
+    case "Float" => Some(Float)
+    case "Unit"  => Some(Unit)
+    case _       => None
+  }
+
+}
+
+trait NativeTypes extends NativeDefs {
   self: GlobalCodegen with BlockCodegen =>
   import NativeTypes._
 
-  val boolPrint =
-    define(
+  def nativeDefFor(
+    aType: NativeType[_],
+    name: String,
+    parameterTypes: Option[Seq[Type]]): Option[Def] =
+
+    nativeDefFor(aType, Signature(name, parameterTypes))
+
+  def nativeDefFor(aType: NativeType[_], signature: Signature): Option[Def] = {
+    val typeDef = nativeTypeDefOf(aType)
+    typeDef.defs.get(signature)
+  }
+
+  lazy val boolPrint =
+    defineInternal(
       Function(
         returnType = Unit.toLlvm,
         name = "Bool_print",
         parameters = Seq(Parameter(Bool.toLlvm))))
 
-  val intPrint =
-    define(
+  lazy val intPrint =
+    defineInternal(
       Function(
         returnType = Unit.toLlvm,
         name = "Int_print",
         parameters = Seq(Parameter(Int.toLlvm))))
 
-  val floatPrint =
-    define(
+  lazy val floatPrint =
+    defineInternal(
       Function(
         returnType = Unit.toLlvm,
         name = "Float_print",
         parameters = Seq(Parameter(Float.toLlvm))))
 
-  val unitPrint =
-    define(
+  lazy val unitPrint =
+    defineInternal(
       Function(
         returnType = Unit.toLlvm,
         name = "Unit_print",
         parameters = Seq()))
 
-  def nativeTypeFor(name: String): Type = name match {
-    case "Bool"  => Bool
-    case "Char"  => Char
-    case "Int"   => Int
-    case "Float" => Float
-    case "Unit"  => Unit
-    case _       => error(s"Native type $name does not exist.")
-  }
-
-  val nativeTypes = Seq[(Type, Seq[FunDef])](
-    Bool -> Seq(
+  lazy val nativeTypeDefOf = Seq(
+    TypeDef(
+      Bool,
       NativeFunDef("print", Seq(), Unit, {
         case Seq(a) =>
           instruction(Call(boolPrint, Seq((a, Seq()))))
           unit
       })),
-    Int -> Seq(
+
+    TypeDef(
+      Int,
       NativeFunDef("+", Seq(Int), Int, {
         case Seq(a, b) => instruction(Int.toLlvm, Add(a, b))
       }),
@@ -93,7 +121,9 @@ trait NativeTypes {
           instruction(Call(intPrint, Seq((a, Seq()))))
           unit
       })),
-    Float -> Seq(
+
+    TypeDef(
+      Float,
       NativeFunDef("+", Seq(Float), Float, {
         case Seq(a, b) => instruction(Float.toLlvm, FAdd(a, b))
       }),
@@ -132,13 +162,15 @@ trait NativeTypes {
           instruction(Call(floatPrint, Seq((a, Seq()))))
           unit
       })),
-    Unit -> Seq(
+
+    TypeDef(
+      Unit,
       NativeFunDef("print", Seq(), Unit, {
         case Seq(u) =>
           instruction(Call(unitPrint, Seq()))
           unit
       })))
-    .map({ case (t, defs) => t -> TypeDef(t.name, t, defs.map(fd => fd.signature -> fd).toMap) })
+    .map(td => td.aType -> td)
     .toMap
 
   def constantBool(value: Boolean) =
@@ -157,12 +189,4 @@ trait NativeTypes {
   def unit =
     constantBool(true)
 
-}
-
-object NativeTypes {
-  val Bool = NativeType("Bool", llvm.Type.Int(1))
-  val Char = NativeType("Char", llvm.Type.Int(8))
-  val Int = NativeType("Int", llvm.Type.Int(64))
-  val Float = NativeType("Float", llvm.Type.Double)
-  val Unit = NativeType("Unit", llvm.Type.Int(1))
 }

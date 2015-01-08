@@ -1,6 +1,6 @@
 package flow
 
-object ast {
+package object ast {
 
   sealed trait Ast
 
@@ -10,15 +10,15 @@ object ast {
 
   sealed trait Statement extends Ast
 
-  sealed trait MemberDefinition
+  sealed trait MemberDef extends Ast
 
-  case class TypeDefinition(name: String, defs: Seq[MemberDefinition]) extends Statement
+  case class TypeDef(name: String, defs: Seq[MemberDef]) extends Statement
 
-  case class Definition(name: String, parameters: Option[Seq[Parameter]], typeAnn: String, body: Expression) extends Statement with MemberDefinition
+  case class Def(name: String, parameters: Option[Seq[Parameter]], typeAnn: String, body: Option[Expression]) extends Statement with MemberDef
 
-  case class ExternalFunction(name: String, parameters: Seq[Parameter], typeAnn: String) extends Statement with MemberDefinition
+  case class StaticDef(definition: Def) extends Ast with MemberDef
 
-  case class StaticDefinition(definition: Definition) extends Ast with MemberDefinition
+  case class StaticVarDef(definition: VarDef) extends Ast with MemberDef
 
   // Expression
 
@@ -28,7 +28,7 @@ object ast {
 
   case class Parameter(name: String, aType: String) extends Ast
 
-  case class VarDefinition(name: String, typeAnn: String, expr: Expression, isMutable: Boolean) extends Expression with MemberDefinition
+  case class VarDef(name: String, typeAnn: String, expr: Expression, isMutable: Boolean) extends Expression with MemberDef
 
   case class If(condition: Expression, thn: Expression, els: Option[Expression]) extends Expression
 

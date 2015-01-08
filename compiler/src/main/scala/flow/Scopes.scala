@@ -6,21 +6,7 @@ import llvm.GlobalReference
 
 trait Scopes {
 
-  sealed trait CompiledDef
-
-  case class Variable(
-    name: String,
-    aType: Type,
-    isMutable: Boolean,
-    pointer: Operand) extends CompiledDef
-
-  case class Function(
-    name: String,
-    parameterTypes: Seq[Type],
-    resultType: Type,
-    reference: GlobalReference) extends CompiledDef
-
-  type Scope = mutable.Map[Signature, CompiledDef]
+  type Scope = mutable.Map[Signature, Def]
 
   object Scope { def apply(): Scope = mutable.Map() }
 
@@ -45,21 +31,14 @@ trait Scopes {
 
     def isTop = scopes.tail.isEmpty
 
-    def assertNotDefined(name: String) = {
-      if (current.contains(name))
-        error(s"Variable $name is already defined.")
+    def assertNotDefined(defn: Def) = {
+      if (current.contains(defn.signature))
+        error(s"${defn.signature} is already defined.")
     }
 
-    def assertNotDefined(name: String, argumentTypes: Seq[Type]) = {
-      if (current.contains(name)) {
-        val argTypes = argumentTypes.mkString("(", ",", ")")
-        error(s"Function $name($argTypes) is already defined.")
-      }
-    }
-
-    def memberFor(
+    def find(
       signature: Signature,
-      scopes: List[Scope] = this.scopes): Option[(CompiledDef, Scope)] = {
+      scopes: List[Scope] = this.scopes): Option[(Def, Scope)] = {
 
       if (scopes.isEmpty) {
         None
@@ -67,40 +46,26 @@ trait Scopes {
       else {
         scopes.head.get(signature) match {
           case Some(m) => Some((m, scopes.head))
-          case None    => memberFor(signature, scopes.tail)
+          case None    => find(signature, scopes.tail)
         }
       }
     }
 
-    def variableFor(name: String) = memberFor(name) match {
-      case Some((v: Variable, _)) => v
-      case Some((a, _))           => illegal(s"${a.getClass().getName()} is not a Variable.")
-      case None                   => error(s"Variable $name is not defined.")
+    def defFor(signature: Signature): Def = find(signature) match {
+      case Some((defn, _)) => defn
+      case None            => error(s"$signature is not defined.")
     }
 
-    def functionFor(name: String, argumentTypes: Seq[Type]) = memberFor((name, argumentTypes)) match {
-      case Some((f: Function, _)) => f
-      case Some((a, _))           => illegal(s"${a.getClass().getName()} is not a Function.")
-      case None =>
-        val argTypes = argumentTypes.mkString("(", ",", ")")
-        error(s"Function $name($argTypes) is not defined.")
+    def defFor(name: String): Def =
+      defFor(Signature(name, None))
+
+    def defFor(name: String, parameterTypes: Option[Seq[Type]]): Def =
+      defFor(Signature(name, parameterTypes))
+
+    def put(defn: Def) = {
+      assertNotDefined(defn)
+      current(defn.signature) = defn
     }
-
-    def put(variable: Variable) = {
-      assertNotDefined(variable.name)
-      current(variable.name) = variable
-    }
-
-    def put(function: Function) = {
-      assertNotDefined(function.name, function.parameterTypes)
-      current((function.name, function.parameterTypes)) = function
-    }
-
-    implicit def nameToSignature(name: String): Signature =
-      Signature(name, None)
-
-    implicit def pairToSignature(pair: (String, Seq[Type])): Signature =
-      Signature(pair._1, Some(pair._2))
 
   }
 

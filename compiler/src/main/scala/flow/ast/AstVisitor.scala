@@ -1,8 +1,9 @@
-package flow
+package flow.ast
 
 import scala.collection.JavaConversions._
+
 import FlowParser._
-import ast._
+import flow.OperatorPrecedence
 
 class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
   override def visitProgram(context: ProgramContext) =
@@ -17,34 +18,81 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
   override def visitExpression(context: ExpressionContext) =
     visit(context).asInstanceOf[Expression]
 
-  override def visitDefn(context: DefnContext) = {
-    val name = context.ID.getText()
-    val parameters = Option(context.parameterClause) map {
+  override def visitMemberDefinition(context: MemberDefinitionContext) =
+    visit(context).asInstanceOf[MemberDef]
+
+  override def visitTypeDefinition(context: TypeDefinitionContext) = {
+    val typeName = context.ID.getText()
+    val defs = context.memberDefinition.toList.map(visitMemberDefinition)
+
+    TypeDef(typeName, defs)
+  }
+
+  override def visitMemberDef(context: MemberDefContext) = {
+    val defn = visitDefn(context.defn)
+
+    if (context.STATIC != null)
+      StaticDef(defn)
+    else
+      defn
+  }
+
+  override def visitMemberVarDef(context: MemberVarDefContext) = {
+    val defn = visitVariableDefinition(context.variableDefinition)
+
+    if (context.STATIC != null)
+      StaticVarDef(defn)
+    else
+      defn
+  }
+
+  override def visitExternalMemberDef(context: ExternalMemberDefContext) = {
+    val name = context.defnHead.ID.getText()
+    val parameters = Option(context.defnHead.parameterClause) map {
       paramClause =>
         Option(paramClause.parameters) map {
           parameters =>
             parameters.parameter.toList.map(visitParameter)
         } getOrElse Seq()
     }
-    val typeAnn = context.typeAnn.ID.getText()
+    val typeAnn = context.defnHead.typeAnn.ID.getText()
+
+    val defn = Def(name, parameters, typeAnn, None)
+
+    if (context.STATIC != null)
+      StaticDef(defn)
+    else
+      defn
+  }
+
+  override def visitDefn(context: DefnContext) = {
+    val name = context.defnHead.ID.getText()
+    val parameters = Option(context.defnHead.parameterClause) map {
+      paramClause =>
+        Option(paramClause.parameters) map {
+          parameters =>
+            parameters.parameter.toList.map(visitParameter)
+        } getOrElse Seq()
+    }
+    val typeAnn = context.defnHead.typeAnn.ID.getText()
     val body = visitExpression(context.expression)
 
-    Definition(name, parameters, typeAnn, body)
+    Def(name, parameters, typeAnn, Some(body))
   }
 
-  override def visitExternalFun(context: ExternalFunContext) = {
-    val name = context.ID.getText()
-    val parameters = Option(context.parameterClause.parameters) map {
-      parameters =>
-        parameters.parameter.toList.map(visitParameter)
-    } getOrElse Seq()
-    val typeAnn = context.typeAnn.ID.getText()
+  override def visitExternalDef(context: ExternalDefContext) = {
+    val name = context.defnHead.ID.getText()
+    val parameters = Option(context.defnHead.parameterClause) map {
+      paramClause =>
+        Option(paramClause.parameters) map {
+          parameters =>
+            parameters.parameter.toList.map(visitParameter)
+        } getOrElse Seq()
+    }
+    val typeAnn = context.defnHead.typeAnn.ID.getText()
 
-    ExternalFunction(name, parameters, typeAnn)
+    Def(name, parameters, typeAnn, None)
   }
-
-  override def visitStaticDef(context: StaticDefContext) =
-    StaticDefinition(visitDefn(context.defn))
 
   override def visitVariableDefinition(context: VariableDefinitionContext) = {
     val name = context.ID.getText()
@@ -52,7 +100,7 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
     val expr = visitExpression(context.expression)
     val isMutable = context.kw.getText() == "var"
 
-    VarDefinition(name, typeAnn, expr, isMutable)
+    VarDef(name, typeAnn, expr, isMutable)
   }
 
   override def visitIf(context: IfContext) = {
@@ -125,8 +173,14 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
   override def visitBool(context: BoolContext) =
     BoolLiteral(context.BOOL.getText() == "true")
 
-  override def visitChar(context: CharContext) =
-    CharLiteral(context.CHAR.getText().head)
+  override def visitChar(context: CharContext) = {
+    val literal = context.CHAR.getText()
+
+    if (literal(1) == '\\')
+      CharLiteral(literal(2))
+    else
+      CharLiteral(literal(1))
+  }
 
   override def visitString(context: StringContext) =
     StringLiteral(context.STRING.getText())

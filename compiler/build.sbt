@@ -2,7 +2,7 @@ name := "flow-compiler"
 
 version := "0.1"
 
-scalaVersion := "2.11.4"
+scalaVersion := "2.11.5"
 
 sbtVersion := "0.13.7"
 
@@ -16,7 +16,7 @@ antlr4Settings
 
 antlr4GenVisitor in Antlr4 := true
 
-antlr4PackageName in Antlr4 := Some("flow")
+antlr4PackageName in Antlr4 := Some("flow.ast")
 
 EclipseKeys.withSource := true
 

@@ -7,6 +7,10 @@ void Bool_print(int value) {
     printf("false\n");
 }
 
+void Char_print(char value) {
+  printf("%c\n", value);
+}
+
 void Int_print(long long value) {
   printf("%lld\n", value);
 }

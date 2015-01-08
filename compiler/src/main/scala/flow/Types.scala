@@ -1,55 +1,109 @@
 package flow
 
-import NativeTypes._
+import scala.collection.mutable
 
-import ast._
-import llvm.Operand
+sealed trait Type {
 
-// Types =======================================================================
-
-trait Type {
   def name: String
+
   def toLlvm: llvm.Type
+
+  def companion = CompanionType(this)
+
   override def toString = name
+
 }
 
 case class NativeType[A <: llvm.Type](name: String, toLlvm: A) extends Type
 
-// Defs ========================================================================
+case class DefinedType(name: String) extends Type {
 
-case class Signature(name: String, parameterTypes: Option[Seq[Type]])
+  def toLlvm = ???
 
-sealed trait Def {
-  def name: String
-  def parameterTypes: Option[Seq[Type]]
-  def resultType: Type
-  def signature: Signature = Signature(name, parameterTypes)
 }
 
-sealed trait FunDef extends Def {
-  def requiredTypes: Seq[Type]
-  def parameterTypes = Some(requiredTypes)
+case class CompanionType(accompaniedType: Type) extends Type {
+
+  def name = s"${accompaniedType.name}Companion"
+
+  def toLlvm = NativeTypes.Unit.toLlvm
+
 }
 
-case class NativeFunDef(
-  name: String,
-  requiredTypes: Seq[Type],
-  resultType: Type,
-  body: Seq[Operand] => Operand) extends FunDef
+trait Types {
+  self: NativeTypes =>
 
-case class TypeDef(name: String, aType: Type, defs: Map[Signature, Def])
+  val typeDefs = mutable.Map.empty[String, TypeDef]
 
-// =============================================================================
+  def declare(name: String): Type = {
+    val aType = NativeTypes.get(name) match {
+      case Some(nativeType) => nativeType
+      case None             => DefinedType(name)
+    }
 
-trait DefLookup {
+    declare(aType)
 
-  def typeDefOf(aType: Type): TypeDef
+    aType
+  }
+
+  def declare(aType: Type): Type = {
+    println(s"declaring: $aType")
+    val typeName = aType.name
+
+    if (typeDefs.contains(typeName))
+      error(s"Type $typeName is already declared.")
+
+    typeDefs(typeName) = TypeDef(aType)
+
+    aType
+  }
+
+  // TODO: this sucks
+  def declare(aType: Type, defn: Def) = {
+    println(s"declaring: $aType.${defn.signature}")
+    val item = defn.signature -> defn
+
+    val newDefs = typeDefs.get(aType.name) match {
+      case Some(TypeDef(_, defs)) => defs + item
+      case None                   => Map(item)
+    }
+
+    typeDefs(aType.name) = TypeDef(aType, newDefs)
+  }
+
+  def define(typeDef: TypeDef) = {
+    val name = typeDef.name
+    val aType = typeDef.aType
+    println(s"defining: $aType")
+
+    if (!typeDefs.contains(name))
+      error(s"Type $name is not declared.")
+
+    //    if (typeDefs.contains(aType))
+    //      error(s"Type $name is already defined.")
+
+    typeDefs(aType.name) = typeDef
+  }
+
+  def typeFor(name: String): Type = {
+    typeDefs.get(name) match {
+      case Some(typeDef) => typeDef.aType
+      case None          => error(s"Type $name is not defined.")
+    }
+  }
+
+  def typeDefOf(aType: Type): TypeDef = {
+    typeDefs.get(aType.name) match {
+      case Some(typeDef) => typeDef
+      case None          => error(s"Type $aType is not defined.")
+    }
+  }
 
   def defFor(aType: Type, name: String, argTypes: Option[Seq[Type]]) = {
     val typeDef = typeDefOf(aType)
-    val sig = Signature(name, argTypes)
+    val signature = Signature(name, argTypes)
 
-    typeDef.defs.get(sig) match {
+    typeDef.defs.get(signature) match {
       case Some(defn) =>
         defn
       case None =>
@@ -60,14 +114,6 @@ trait DefLookup {
             error(s"Type $aType does not define $name${types.mkString("(", ",", ")")}.")
         }
     }
-  }
-
-}
-
-trait Types {
-
-  def unify(types: Type*): Type = {
-    Unit
   }
 
 }

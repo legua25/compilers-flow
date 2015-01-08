@@ -18,7 +18,7 @@ class BlockState(val name: String) {
 
 }
 
-trait BlockCodegen {
+trait BlockCodegen extends LlvmNames {
 
   private val blockFor = mutable.Map.empty[String, BlockState]
   private val blocks = mutable.ListBuffer.empty[BlockState]
@@ -33,8 +33,10 @@ trait BlockCodegen {
     s".$n"
   }
 
-  private def uniqueBlockName(name0: String) = {
-    var name: String = name0
+  private def blockNameFrom(name0: String) = {
+    val safeName = safeNameFrom(name0)
+
+    var name: String = safeName
     var i = 1
 
     while (blockFor.isDefinedAt(name)) {
@@ -49,7 +51,7 @@ trait BlockCodegen {
     _currentBlock.name
 
   def newBlock(name0: String) = {
-    val name = uniqueBlockName(name0)
+    val name = blockNameFrom(name0)
     val block = new BlockState(name)
     blockFor(name) = block
     blocks += block
@@ -94,4 +96,30 @@ trait BlockCodegen {
     _currentBlock.terminator = Some(term)
   }
 
+  // Aliases ===================================================================
+
+  def alloca(aType: llvm.Type) = {
+    instruction(aType.pointer, Alloca(aType))
+  }
+
+  def store(value: Operand, address: Operand) =
+    instruction(Store(value, address))
+
+  def load(aType: llvm.Type, address: Operand) =
+    instruction(aType, Load(address))
+
+  def call(aType: llvm.Type, function: Operand, arguments: Seq[Operand]) =
+    instruction(aType, Call(function, arguments.map(a => (a, Seq()))))
+
+  def br(condition: Operand, trueDest: Name, falseDest: Name) =
+    terminator(CondBr(condition, trueDest, falseDest))
+
+  def br(dest: Name) =
+    terminator(Br(dest))
+
+  def ret() =
+    terminator(Ret(None))
+
+  def ret(value: Operand) =
+    terminator(Ret(Some(value)))
 }

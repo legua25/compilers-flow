@@ -2,272 +2,344 @@ package flow
 
 import scala.collection.mutable
 import NativeTypes._
-import ast._
-import llvm.{ Parameter => _, _ }
 
 trait Compiler
   extends GlobalCodegen
   with BlockCodegen
   with NativeTypes
-  with DefLookup
+  with Types
   with Scopes {
 
-  def compile(moduleName: String, program: Program): Module = {
+  def typeOfId(name: String) = {
+    scope.defFor(name).resultType
+  }
+
+  def compile(
+    moduleName: String,
+    program: ast.Program,
+    libraries: Seq[ast.Program] = Seq()): llvm.Module = scoped {
+
+    val sources = libraries :+ program
+
+    val statements = sources.flatMap(_.statements)
+
+    val typeDefs = statements collect { case td: ast.TypeDef => td }
+
+    val globals: Seq[ast.MemberDef] =
+      statements collect { case d: ast.Def => d }
+
+    val mainStatements = program.statements collect { case e: ast.Expression => e }
+
+    // compilation ===
+
+    defineTypes(typeDefs)
+
     scoped {
-      program.statements foreach {
-        case Definition(name, parameters, typeAnn, _) =>
-          val Some(pts) = parameters.map(_.map(p => nativeTypeFor(p.aType)))
-          val lps = pts.map(t => llvm.Parameter(t.toLlvm))
-          val rt = nativeTypeFor(typeAnn)
-          val ref = define(
-            llvm.Function(
-              returnType = rt.toLlvm,
-              name = name,
-              parameters = lps))
-          scope.put(Function(name, pts, rt, ref))
-        case VarDefinition(name, typeAnn, _, isMutable) =>
-          val t = nativeTypeFor(typeAnn)
-          val ref = define(
-            llvm.GlobalVariable(
-              name = name,
-              linkage = llvm.Linkage.Private,
-              aType = t.toLlvm,
-              initializer = Some(Constant.ZeroInitializer)))
-          scope.put(Variable(name, t, isMutable, ref))
-        case _ =>
-      }
-
-      program.statements foreach {
-        case fd @ Definition(_, _, _, _) => compile(fd)
-        case _                           =>
-      }
-
       setBlock(newBlock("entry"))
-
-      program.statements foreach {
-        case fd @ Definition(_, _, _, _) =>
-        case other                       => compile(other)
-      }
-
-      terminator(Ret(Some(Constant.Int(llvm.Type.Int(32), "0"))))
-
-      define(
-        llvm.Function(
-          returnType = llvm.Type.Int(32),
-          name = "main",
-          basicBlocks = makeBasicBlocks()))
+      mainStatements.foreach(compile)
+      ret(llvm.Constant.Int(llvm.Type.Int(32), "0"))
     }
+
+    defineInternal(
+      llvm.Function(
+        returnType = llvm.Type.Int(32),
+        name = "main",
+        basicBlocks = makeBasicBlocks()))
 
     module(moduleName)
   }
 
-  def compile(statement: Statement): Unit = statement match {
-    case Definition(name, parameters, typeAnn, body) =>
-      scoped {
-        setBlock(newBlock("entry"))
+  def defineTypes(typeDefs: Seq[ast.TypeDef]): Unit = {
+    for (typeDef <- typeDefs) {
+      val aType = declare(typeDef.name)
+      val companionType = declare(aType.companion)
+      scope.put(ConstantDef(aType.name, companionType, unit))
+    }
 
-        val declaredType = nativeTypeFor(typeAnn)
+    for (typeDef <- typeDefs) {
+      define(typeDef)
+      println(s"defined: ${typeDef.name}")
+    }
+  }
 
-        val llvmParameters =
-          for (Parameter(n, ta) <- parameters.get) yield {
-            val t = nativeTypeFor(ta)
-            val lt = t.toLlvm
-            val pt = lt.pointer
-            val localName = newLocalName()
+  def define(typeDef: ast.TypeDef): Unit = scoped {
+    val aType = typeFor(typeDef.name)
 
-            val ref = instruction(pt, Alloca(lt))
-            instruction(Store(LocalReference(lt, localName), ref))
+    scope.put(This(aType))
 
-            scope.put(Variable(n, t, false, ref))
+    val decls =
+      for (defn <- typeDef.defs) yield {
+        val d = declare(aType, defn)
+        declare(aType, d)
+        scope.put(d)
+        d
+      }
 
-            llvm.Parameter(lt, localName)
+    for ((decl, defn) <- decls.zip(typeDef.defs)) {
+      define(aType, defn, decl)
+    }
+
+    val defns = decls.map(d => d.signature -> d).toMap
+
+    define(TypeDef(aType, defns))
+    define(TypeDef(aType.companion, defns))
+  }
+
+  def declare(aType: Type, defn: ast.MemberDef): GlobalDef = defn match {
+    case ast.Def(name, parameters, typeAnn, _) =>
+      declare(aType, name, parameters, typeAnn)
+    case ast.StaticDef(defn) =>
+      declare(aType.companion, defn)
+    case _: ast.StaticVarDef => ???
+    case _: ast.VarDef       => ???
+  }
+
+  def declare(
+    aType: Type,
+    name: String,
+    parameters: Option[Seq[ast.Parameter]],
+    typeAnn: String): GlobalDef = {
+
+    val paramTypes = parameters.map(_.map(p => typeFor(p.aType)))
+    val llvmParams = llvm.Parameter(aType.toLlvm, "this") +: {
+      paramTypes
+        .getOrElse(Seq())
+        .map(t => llvm.Parameter(t.toLlvm))
+    }
+
+    val paramClause = paramTypes.map(_.map(_.name)).getOrElse(Seq(""))
+    val qualifiedName = QualifiedName(aType.name, name, paramClause: _*)
+
+    val resultType = typeFor(typeAnn)
+    val llvmResultType = resultType.toLlvm
+
+    val reference = declare(llvmResultType, qualifiedName, llvmParams)
+
+    GlobalDef(name, paramTypes, resultType, reference)
+  }
+
+  def define(
+    aType: Type,
+    defn: ast.MemberDef,
+    decl: GlobalDef): Unit = {
+
+    val GlobalDef(name, _, declaredType, reference) = decl
+
+    defn match {
+      case ast.Def(_, parameters, _, Some(body)) =>
+        scoped {
+          setBlock(newBlock("entry"))
+
+          val ths = This(aType)
+          val thisRef = alloca(aType.toLlvm)
+          store(ths.reference, thisRef)
+          scope.put(ths)
+
+          val llvmParameters = llvm.Parameter(aType.toLlvm, "this") +: {
+            for {
+              params <- parameters.toList
+              ast.Parameter(n, ta) <- params
+            } yield {
+              val aType = typeFor(ta)
+              val llvmType = aType.toLlvm
+              val pointerType = llvmType.pointer
+              val localName = newLocalName()
+
+              val reference = alloca(llvmType)
+              store(llvm.LocalReference(llvmType, localName), reference)
+
+              scope.put(LocalVarDef(n, aType, false, reference))
+
+              llvm.Parameter(llvmType, localName)
+            }
           }
 
-        val (operand, actualType) = compile(body)
+          val (operand, actualType) = compile(body)
+
+          if (actualType != declaredType)
+            error(s"Declared result type $declaredType does not match actual type $actualType.")
+
+          ret(operand)
+
+          define(reference, llvmParameters, makeBasicBlocks())
+        }
+
+      case ast.Def(_, _, _, None) =>
+      case ast.StaticDef(defn) =>
+        define(aType.companion, defn, decl)
+      case _: ast.VarDef => ???
+      case _             => ???
+    }
+  }
+
+  def compile(expression: ast.Expression): (llvm.Operand, Type) = {
+    println(s"compiling: $expression")
+
+    expression match {
+      case ast.VarDef(name, typeAnn, expr, isMutable) =>
+        val declaredType = typeFor(typeAnn)
+
+        if (!scope.isTop) {
+          val lt = declaredType.toLlvm
+          val ref = alloca(lt)
+          scope.put(LocalVarDef(name, declaredType, isMutable, ref))
+        }
+
+        val (operand, actualType) = compile(expr)
 
         if (actualType != declaredType)
-          error(s"Declared result type $declaredType does not match actual type $actualType.")
+          error(s"Declared type $declaredType does not match actual type $actualType.")
 
-        terminator(Ret(Some(operand)))
+        val VarDef(_, _, _, ref) = scope.defFor(name)
+        store(operand, ref)
 
-        define(
-          llvm.Function(
-            returnType = actualType.toLlvm,
-            name = name,
-            parameters = llvmParameters,
-            basicBlocks = makeBasicBlocks()))
-      }
+        (unit, Unit)
 
-    case e: Expression => compile(e)
-  }
+      case ast.If(condition, thn, els) =>
+        val entryBlock = currentBlock
+        val thenBlock = newBlock("then")
+        val elseBlock = newBlock("else")
+        val continueBlock = newBlock("continue")
 
-  def compile(expression: Expression): (Operand, Type) = expression match {
-    case VarDefinition(name, typeAnn, expr, isMutable) =>
-      val declaredType = nativeTypeFor(typeAnn)
+        val (cond, condType) = compile(condition)
 
-      if (!scope.isTop) {
-        val lt = declaredType.toLlvm
-        val ref = instruction(lt.pointer, Alloca(lt))
-        scope.put(Variable(name, declaredType, isMutable, ref))
-      }
+        if (condType != Bool)
+          error(s"Condition evaluated to $condType, expected $Bool.")
 
-      val (operand, actualType) = compile(expr)
+        setBlock(thenBlock)
+        val (e0, t0) = compile(thn)
+        val thenContinueBlock = currentBlock
 
-      if (actualType != declaredType)
-        error(s"Declared type $declaredType does not match actual type $actualType.")
-
-      val Variable(_, _, _, ref) = scope.variableFor(name)
-      instruction(Store(operand, ref))
-
-      (unit, Unit)
-
-    case If(condition, thn, els) =>
-      val entryBlock = currentBlock
-      val thenBlock = newBlock("then")
-      val elseBlock = newBlock("else")
-      val continueBlock = newBlock("continue")
-
-      val (cond, condType) = compile(condition)
-
-      if (condType != Bool)
-        error(s"Condition evaluated to $condType, expected $Bool.")
-
-      setBlock(thenBlock)
-      val (e0, t0) = compile(thn)
-      val thenContinueBlock = currentBlock
-
-      setBlock(elseBlock)
-      val (e1, t1) = els match {
-        case Some(expr) =>
-          val (e1, t1) = compile(expr)
-          (e1, t1)
-        case None =>
-          (unit, Unit)
-      }
-      val elseContinueBlock = currentBlock
-
-      // TODO: type unification
-      if (t0 != t1)
-        error(s"Type $t0 does not match type $t1.")
-
-      setBlock(entryBlock)
-      val lt = t0.toLlvm
-      val resRef = instruction(lt.pointer, Alloca(lt))
-      terminator(CondBr(cond, thenBlock, elseBlock))
-
-      setBlock(thenContinueBlock)
-      instruction(Store(e0, resRef))
-      terminator(Br(continueBlock))
-
-      setBlock(elseContinueBlock)
-      instruction(Store(e1, resRef))
-      terminator(Br(continueBlock))
-
-      setBlock(continueBlock)
-      val result = instruction(lt, Load(resRef))
-
-      (result, t0)
-
-    case While(condition, body) =>
-      val conditionBlock = newBlock("condition")
-      val loopBlock = newBlock("loop")
-      val continueBlock = newBlock("continue")
-
-      terminator(Br(conditionBlock))
-
-      setBlock(conditionBlock)
-      val (cond, condType) = compile(condition)
-
-      if (condType != Bool)
-        error(s"Condition evaluated to $condType, expected $Bool.")
-
-      terminator(CondBr(cond, loopBlock, continueBlock))
-
-      setBlock(loopBlock)
-      compile(body)
-      terminator(Br(conditionBlock))
-
-      setBlock(continueBlock)
-
-      (unit, Unit)
-
-    case Block(expressions) =>
-      scoped {
-        expressions.foldLeft((unit: Operand, Unit: Type)) {
-          case (_, e) => compile(e)
+        setBlock(elseBlock)
+        val (e1, t1) = els match {
+          case Some(expr) =>
+            val (e1, t1) = compile(expr)
+            (e1, t1)
+          case None =>
+            (unit, Unit)
         }
-      }
+        val elseContinueBlock = currentBlock
 
-    case InfixExpression(e0, op, e1) =>
-      val (v0, t0) = compile(e0)
-      val (v1, t1) = compile(e1)
+        // TODO: type unification
+        if (t0 != t1)
+          error(s"Type $t0 does not match type $t1.")
 
-      defFor(t0, op, Some(Seq(t1))) match {
-        case NativeFunDef(_, _, rt, body) => (body(Seq(v0, v1)), rt)
-      }
+        setBlock(entryBlock)
+        val lt = t0.toLlvm
+        val resRef = alloca(lt)
+        br(cond, thenBlock, elseBlock)
 
-    case Id(name) =>
-      val Variable(_, aType, _, ref) = scope.variableFor(name)
-      (instruction(aType.toLlvm, Load(ref)), aType)
+        setBlock(thenContinueBlock)
+        store(e0, resRef)
+        br(continueBlock)
 
-    case Application(Id("print"), Seq(argument)) =>
-      val (v, t) = compile(argument)
+        setBlock(elseContinueBlock)
+        store(e1, resRef)
+        br(continueBlock)
 
-      defFor(t, "print", Some(Seq())) match {
-        case NativeFunDef(_, _, rt, body) => (body(Seq(v)), rt)
-      }
+        setBlock(continueBlock)
+        val result = load(lt, resRef)
 
-    case Application(Id(funName), arguments) =>
-      val (args, argTypes) =
-        (for (arg <- arguments) yield {
-          val (v, t) = compile(arg)
-          ((v, Seq()), t)
-        }).unzip
+        (result, t0)
 
-      val Function(_, _, resultType, ref) = scope.functionFor(funName, argTypes)
+      case ast.While(condition, body) =>
+        val conditionBlock = newBlock("condition")
+        val loopBlock = newBlock("loop")
+        val continueBlock = newBlock("continue")
 
-      val result = instruction(resultType.toLlvm, Call(ref, args))
+        br(conditionBlock)
 
-      (result, resultType)
+        setBlock(conditionBlock)
+        val (cond, condType) = compile(condition)
 
-    case Application(Selection(expr, name), arguments) =>
-      val (e, t) = compile(expr)
+        if (condType != Bool)
+          error(s"Condition evaluated to $condType, expected $Bool.")
 
-      val (args, argTypes) = arguments.map(compile).unzip
+        br(cond, loopBlock, continueBlock)
 
-      val NativeFunDef(_, _, resultType, body) = defFor(t, name, Some(argTypes))
+        setBlock(loopBlock)
+        compile(body)
+        br(conditionBlock)
 
-      val result = body(e +: args)
+        setBlock(continueBlock)
 
-      (result, resultType)
+        (unit, Unit)
 
-    case Assignment(Id(name), expr) =>
-      val Variable(_, declaredType, isMutable, ref) = scope.variableFor(name)
-      if (!isMutable)
-        error(s"Cannot reassign into val $name.")
+      case ast.Block(expressions) =>
+        scoped {
+          expressions.foldLeft((unit: llvm.Operand, Unit: Type)) {
+            case (_, e) => compile(e)
+          }
+        }
 
-      val (o, actualType) = compile(expr)
+      case ast.InfixExpression(e0, op, e1) =>
+        val (v0, t0) = compile(e0)
+        val (v1, t1) = compile(e1)
 
-      if (actualType != declaredType)
-        error(s"Cannot assign type $actualType to $declaredType.")
+        defFor(t0, op, Some(Seq(t1))) match {
+          case NativeFunDef(_, _, rt, body) => (body(Seq(v0, v1)), rt)
+          case RefDef(_, _, resultType, ref) =>
+            val result = call(resultType.toLlvm, ref, Seq(v0, v1))
+            (result, resultType)
+        }
 
-      instruction(Store(o, ref))
+      case ast.Id(name) =>
+        val VarDef(_, aType, _, ref) = scope.defFor(name)
+        (load(aType.toLlvm, ref), aType)
 
-      (unit, Unit)
+      case ast.Application(ast.Id(funName), arguments) =>
+        val (args, argTypes) = arguments.map(compile).unzip
 
-    case BoolLiteral(value)   => (constantBool(value), Bool)
-    case CharLiteral(value)   => (constantChar(value), Char)
-    case StringLiteral(value) => ???
-    case IntLiteral(value)    => (constantInt(value), Int)
-    case FloatLiteral(value)  => (constantFloat(value), Float)
-    case Parenthesized(e)     => compile(e)
-    case e                    => println(e); ???
+        val RefDef(_, _, resultType, ref) = scope.defFor(funName, Some(argTypes))
+
+        val result = call(resultType.toLlvm, ref, args)
+
+        (result, resultType)
+
+      case ast.Application(ast.Selection(expr, name), arguments) =>
+        val (e, t) = compile(expr)
+
+        val (args, argTypes) = arguments.map(compile).unzip
+
+        defFor(t, name, Some(argTypes)) match {
+          case NativeFunDef(_, _, rt, body) => (body(e +: args), rt)
+          case RefDef(_, _, resultType, ref) =>
+            val result = call(resultType.toLlvm, ref, e +: args)
+            (result, resultType)
+        }
+
+      case ast.Assignment(ast.Id(name), expr) =>
+        val VarDef(_, declaredType, isMutable, ref) = scope.defFor(name)
+
+        if (!isMutable)
+          error(s"Cannot reassign into val $name.")
+
+        val (o, actualType) = compile(expr)
+
+        if (actualType != declaredType)
+          error(s"Cannot assign type $actualType to $declaredType.")
+
+        store(o, ref)
+
+        (unit, Unit)
+
+      case ast.BoolLiteral(value)   => (constantBool(value), Bool)
+      case ast.CharLiteral(value)   => (constantChar(value), Char)
+      case ast.StringLiteral(value) => ???
+      case ast.IntLiteral(value)    => (constantInt(value), Int)
+      case ast.FloatLiteral(value)  => (constantFloat(value), Float)
+      case ast.Parenthesized(e)     => compile(e)
+      case ast.Selection(where, what) =>
+        val (e, t) = compile(where)
+
+        defFor(t, what, None) match {
+          case NativeFunDef(_, _, rt, body) => (body(Seq(e)), rt)
+          case RefDef(_, _, resultType, ref) =>
+            val result = call(resultType.toLlvm, ref, Seq(e))
+            (result, resultType)
+        }
+      case e => println(e); ???
+    }
   }
-
-  def typeOfId(name: String) =
-    scope.variableFor(name).aType
-
-  def typeDefOf(aType: Type) =
-    nativeTypes(aType)
 
 }

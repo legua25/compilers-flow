@@ -2,15 +2,14 @@ package flow
 
 import scala.collection.mutable
 
+import flow.{ Type => _ }
 import llvm._
 
-trait GlobalCodegen {
+trait GlobalCodegen extends LlvmNames {
 
-  private val globals = mutable.ListBuffer.empty[Global]
+  private val definitionList = mutable.ListBuffer.empty[Definition]
 
-  type Key = (String, Seq[llvm.Type])
-  private val definitionMap = mutable.Map.empty[Key, Int]
-  private val names = mutable.Set.empty[String]
+  private val declaredFunctions = mutable.Map.empty[GlobalReference, Int]
 
   private var nrOfGlobals = 0
 
@@ -20,58 +19,82 @@ trait GlobalCodegen {
     s".$n"
   }
 
-  def uniqueNameFrom(name0: String) = {
-    var name: String = name0
-    var i = 1
+  def declare(
+    returnType: llvm.Type,
+    qualifiedName: QualifiedName,
+    parameters: Seq[llvm.Parameter]) = {
 
-    while (names.contains(name)) {
-      name = name0 + i
-      i += 1
-    }
+    val name = qualifiedName.parts.map(safeNameFrom).mkString("_")
 
-    name
+    val function =
+      Function(
+        returnType = returnType,
+        name = name,
+        parameters = parameters)
+
+    val reference = GlobalReference(returnType, name)
+
+    declaredFunctions(reference) = definitionList.size
+    definitionList += GlobalDefinition(function)
+
+    reference
   }
 
-  def define(function0: llvm.Function) = {
-    val key = (function0.name, function0.parameters.map(_.aType))
-    val idx = definitionMap.get(key)
-    val name = idx
-      .map(globals)
-      .collect({ case f: llvm.Function => f.name })
-      .getOrElse(uniqueNameFrom(function0.name))
-    val function = function0.copy(name = name)
+  def define(
+    reference: GlobalReference,
+    parameters: Seq[llvm.Parameter],
+    basicBlocks: Seq[BasicBlock]) = {
 
-    idx match {
-      case Some(idx) =>
-        globals(idx) = function
-      case None =>
-        val idx = globals.size
-        definitionMap(key) = idx
-        globals += function
-        names += function.name
-    }
+    if (!declaredFunctions.contains(reference))
+      error(s"${reference.repr} is not declared.")
 
+    val GlobalReference(returnType, name) = reference
+
+    val function =
+      Function(
+        returnType = returnType,
+        name = name,
+        parameters = parameters,
+        basicBlocks = basicBlocks)
+
+    definitionList(declaredFunctions(reference)) = GlobalDefinition(function)
+  }
+
+  def defineInternal(function: Function) = {
+    definitionList += GlobalDefinition(function)
     GlobalReference(function.returnType, function.name)
   }
 
   def define(variable: GlobalVariable) = {
-    globals += variable
-    GlobalReference(variable.aType.pointer, variable.name)
+    ???
   }
 
   def definitions = {
-    val sortedDefinitions = globals sortBy {
-      //      case _: TypeDefinition                                      => 0
-      case _: GlobalAlias                       => 1
-      case _: GlobalVariable                    => 2
-      case f: Function if f.basicBlocks.isEmpty => 3
-      case _: Function                          => 4
+    definitionList sortBy {
+      case _: TypeDefinition                                      => 0
+      case GlobalDefinition(_: GlobalAlias)                       => 1
+      case GlobalDefinition(f: Function) if f.basicBlocks.isEmpty => 2
+      case GlobalDefinition(_: GlobalVariable)                    => 3
+      case GlobalDefinition(_: Function)                          => 4
     }
-
-    sortedDefinitions.toList.map(GlobalDefinition)
   }
 
   def module(name: String) =
     Module(name, definitions)
+
+  case class QualifiedName(parts: String*)
+
+  object QualifiedName {
+
+    def apply(part0: String, parts: String*): QualifiedName =
+      QualifiedName(part0 +: parts: _*)
+
+    def apply(part0: String, part1: String, parts: String*): QualifiedName =
+      QualifiedName(part0 +: part1 +: parts: _*)
+
+    def apply(part0: String, part1: String, part2: String, parts: String*): QualifiedName =
+      QualifiedName(part0 +: part1 +: part2 +: parts: _*)
+
+  }
 
 }
