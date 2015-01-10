@@ -1,0 +1,36 @@
+/**
+ * Signed floating pofloat type with long precision
+ */
+type Float = {
+
+  external def ==(that: Float): Bool
+
+  external def !=(that: Float): Bool
+
+  external def >(that: Float): Bool
+
+  external def >=(that: Float): Bool
+
+  external def <(that: Float): Bool
+
+  external def <=(that: Float): Bool
+
+  external def printLine(): Unit
+
+  external def +(that: Float): Float
+
+  external def -(that: Float): Float
+
+  external def *(that: Float): Float
+
+  external def /(that: Float): Float
+
+  external def toInt: Float
+
+  def min(that: Float): Float =
+    if this < that then this else that
+
+  def max(that: Float): Float =
+    if this > that then this else that
+
+}

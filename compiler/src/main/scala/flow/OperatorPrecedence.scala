@@ -1,7 +1,6 @@
 package flow
 
-import ast.{ Expression, InfixExpression }
-import flow.ast.InfixExpression
+import syntax.{ Expression, InfixExpression }
 
 trait OperatorPrecedence {
   sealed trait Associativity

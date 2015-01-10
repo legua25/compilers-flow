@@ -1,6 +1,6 @@
 package flow
 
-package object ast {
+package object syntax {
 
   sealed trait Ast
 

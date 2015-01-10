@@ -1,0 +1,21 @@
+/**
+ * Predefined functions
+ */
+
+//external def readLine(): String
+
+external def readInt(): Int
+
+external def printLine(a: Bool): Unit
+
+external def printLine(a: Char): Unit
+
+external def printLine(a: Int): Unit
+
+external def printLine(a: Float): Unit
+
+external def printLine(a: Unit): Unit
+
+external def printLine(a: IntArray): Unit
+
+external def printLine(a: String): Unit

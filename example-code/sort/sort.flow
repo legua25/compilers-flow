@@ -1,0 +1,31 @@
+val n: Int = readInt()
+val array: IntArray = IntArray.apply(n)
+
+var i: Int = 0
+
+while i < n do {
+  array.update(i, readInt())
+  i = i + 1
+}
+
+var nrOfSorted: Int = 1
+
+while nrOfSorted < n do {
+  var i: Int = nrOfSorted
+
+  while i > 0 && array.apply(i - 1) > array.apply(i) do {
+    val tmp: Int = array.apply(i - 1)
+    array.update(i - 1, array.apply(i))
+    array.update(i, tmp)
+
+    i = i - 1
+  }
+
+  nrOfSorted = nrOfSorted + 1
+}
+
+i = 0
+while i < n do {
+  printLine(array.apply(i))
+  i = i + 1
+}

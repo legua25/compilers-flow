@@ -1,63 +1,99 @@
 package flow
 
+import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.PrintWriter
-import java.util.Arrays
 
 import scala.sys.process._
 
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.tree.gui.TreeViewer
 
-import ast._
+import flow.{ syntax => ast }
 
 object Flow extends Compiler {
 
-  def namePrefixOf(fileName: String) = {
-    fileName.lastIndexOf('.') match {
-      case -1 => fileName
-      case i  => fileName.substring(0, i)
-    }
+  val name = "flowc"
+  val version = "0.1"
+  val extension = ".flow"
+  val libraryFolder = new File("../built-in")
+
+  case class Config(
+    run: Boolean = false,
+    verbose: Boolean = true,
+    outputFile: Option[File] = None,
+    inputFile: File = null)
+
+  val argumentParser = new scopt.OptionParser[Config](name) {
+    head(s"${Flow.name} ${Flow.version}")
+    opt[Unit]('r', "run")
+      .action { (_, c) => c.copy(run = true) }
+      .text("run complied program")
+    opt[Unit]('v', "verbose")
+      .action { (_, c) => c.copy(verbose = true) }
+    opt[File]("output")
+      .action { (f, c) => c.copy(outputFile = Some(f)) }
+    arg[File]("source")
+      .action { (f, c) => c.copy(inputFile = f) }
+      .text("source to compile")
+  }
+
+  val libraryFiles = {
+    libraryFolder
+      .files
+      .filter(_.extension == extension)
   }
 
   def main(args: Array[String]): Unit = {
-    if (args.size == 0) {
-      println("Input file not specified")
-      sys.exit()
+    argumentParser.parse(args, Config()) match {
+      case Some(Config(run, verbose, outputFileOpt, inputFile)) =>
+        val outputFile = outputFileOpt.getOrElse(inputFile.withExtension(".ll"))
+
+        val libraries = libraryFiles.map(f => programFrom(f, verbose))
+        val program = programFrom(inputFile, verbose)
+
+        if (verbose)
+          println(s"Compiling ${inputFile.name}.")
+
+        val module = compile(inputFile.name, program, libraries)
+        writeModuleTo(outputFile, module, verbose)
+
+        if (run)
+          s"./optnrun.sh $outputFile".!
+      case None =>
     }
+  }
 
-    val inputFile = args(0)
-    val namePrefix = namePrefixOf(inputFile)
-    val outputFile = namePrefix + ".ll"
+  def programFrom(file: File, verbose: Boolean = false) = {
+    val input = new FileInputStream(file)
 
-    val input = new FileInputStream(inputFile)
-    val output = new FileOutputStream(outputFile)
-
-    println(s"Parsing $inputFile")
+    if (verbose)
+      println(s"Parsing $file.")
 
     val antlrInput = new ANTLRInputStream(input)
-    val lexer = new FlowLexer(antlrInput)
+    val lexer = new ast.FlowLexer(antlrInput)
     val tokens = new CommonTokenStream(lexer)
-    val parser = new FlowParser(tokens)
+    val parser = new ast.FlowParser(tokens)
     val tree = parser.program()
 
-    val program = new AstVisitor().visit(tree).asInstanceOf[Program]
+    val program = new ast.AstVisitor().visit(tree).asInstanceOf[ast.Program]
 
-    //    new TreeViewer(Arrays.asList(parser.getRuleNames: _*), tree).open()
-    //    println(program)
+    input.close()
 
-    println(s"Compiling to $outputFile")
+    program
+  }
 
-    val module = compile(inputFile, program)
-
+  def writeModuleTo(file: File, module: llvm.Module, verbose: Boolean = false) = {
+    val output = new FileOutputStream(file)
     val printer = new PrintWriter(output)
+
+    if (verbose)
+      println(s"Writing $file.")
 
     printer.println(module.llvm)
     printer.close()
-
-    s"./optnrun.sh $outputFile".!
+    output.close()
   }
 
 }

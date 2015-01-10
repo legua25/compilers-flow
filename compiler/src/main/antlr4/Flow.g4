@@ -87,7 +87,7 @@ literal
 
 semi
   : ';'
-  | NL
+  | NL+
   ;
 
 intt

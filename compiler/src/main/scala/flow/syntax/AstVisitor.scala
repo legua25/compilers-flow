@@ -1,4 +1,4 @@
-package flow.ast
+package flow.syntax
 
 import scala.collection.JavaConversions._
 

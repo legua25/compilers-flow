@@ -1,0 +1,38 @@
+/**
+ * Signed integer type with long precision
+ */
+type Int = {
+
+  external def ==(that: Int): Bool
+
+  external def !=(that: Int): Bool
+
+  external def >(that: Int): Bool
+
+  external def >=(that: Int): Bool
+
+  external def <(that: Int): Bool
+
+  external def <=(that: Int): Bool
+
+  external def printLine(): Unit
+
+  external def +(that: Int): Int
+
+  external def -(that: Int): Int
+
+  external def *(that: Int): Int
+
+  external def /(that: Int): Int
+
+  external def %(that: Int): Int
+
+  external def toFloat: Float
+
+  def min(that: Int): Int =
+    if this < that then this else that
+
+  def max(that: Int): Int =
+    if this > that then this else that
+
+}

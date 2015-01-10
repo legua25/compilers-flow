@@ -18,7 +18,7 @@ case class NativeType[A <: llvm.Type](name: String, toLlvm: A) extends Type
 
 case class DefinedType(name: String) extends Type {
 
-  def toLlvm = ???
+  def toLlvm = { println(name); llvm.Type.Void }
 
 }
 

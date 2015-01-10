@@ -2,6 +2,7 @@ package flow
 
 import scala.collection.mutable
 import NativeTypes._
+import flow.{ syntax => ast }
 
 trait Compiler
   extends GlobalCodegen
