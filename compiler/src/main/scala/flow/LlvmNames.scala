@@ -3,7 +3,7 @@ package flow
 trait LlvmNames {
 
   def isAllowedChar(c: Char) =
-    'a' <= c && c < 'z' || 'A' <= c && c < 'Z' || '0' <= c && c < '9'
+    'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9'
 
   def safeNameFrom(name: String) = {
     name flatMap {

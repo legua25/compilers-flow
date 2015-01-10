@@ -2,7 +2,7 @@ package flow
 
 package object syntax {
 
-  sealed trait Ast
+  sealed trait Ast extends Positioned
 
   case class Program(statements: Seq[Statement]) extends Ast
 
@@ -24,9 +24,7 @@ package object syntax {
 
   sealed trait Expression extends Statement
 
-  sealed trait LValue
-
-  case class Parameter(name: String, aType: String) extends Ast
+  case class Parameter(name: String, typeAnn: String) extends Ast
 
   case class VarDef(name: String, typeAnn: String, expr: Expression, isMutable: Boolean) extends Expression with MemberDef
 
@@ -36,19 +34,19 @@ package object syntax {
 
   case class Block(expressions: Seq[Expression]) extends Expression
 
-  case class PrefixExpression(op: String, expr: Expression) extends Expression
+  //  case class PrefixExpression(operator: String, expression: Expression) extends Expression
 
-  case class InfixExpression(expr0: Expression, op: String, expr1: Expression) extends Expression
+  case class InfixExpression(expression0: Expression, operator: String, expression1: Expression) extends Expression
 
   case class Parenthesized(expression: Expression) extends Expression
 
-  case class Id(name: String) extends Expression with LValue
+  case class Id(name: String) extends Expression
 
-  case class Selection(where: Expression, what: String) extends Expression with LValue
+  case class Selection(expression: Expression, name: String) extends Expression
 
-  case class Application(what: Expression, arguments: Seq[Expression]) extends Expression
+  case class Application(expression: Expression, arguments: Seq[Expression]) extends Expression
 
-  case class Assignment(where: LValue, what: Expression) extends Expression
+  case class Assignment(where: Expression, what: Expression) extends Expression
 
   case class BoolLiteral(value: Boolean) extends Expression
 

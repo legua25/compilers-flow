@@ -1,8 +1,7 @@
-package flow
+package flow.mirror
 
+import flow.error
 import scala.collection.mutable
-import llvm.{ Operand, GlobalReference }
-import llvm.GlobalReference
 
 trait Scopes {
 
@@ -18,6 +17,12 @@ trait Scopes {
     scope.pop()
     result
   }
+
+  def defFor(name: String): Def =
+    scope.defFor(Signature(name, None))
+
+  def defFor(name: String, parameterTypes: Option[Seq[Type]]): Def =
+    scope.defFor(Signature(name, parameterTypes))
 
   class Scopes {
 
@@ -55,12 +60,6 @@ trait Scopes {
       case Some((defn, _)) => defn
       case None            => error(s"$signature is not defined.")
     }
-
-    def defFor(name: String): Def =
-      defFor(Signature(name, None))
-
-    def defFor(name: String, parameterTypes: Option[Seq[Type]]): Def =
-      defFor(Signature(name, parameterTypes))
 
     def put(defn: Def) = {
       assertNotDefined(defn)

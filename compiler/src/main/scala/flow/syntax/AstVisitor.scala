@@ -3,9 +3,9 @@ package flow.syntax
 import scala.collection.JavaConversions._
 
 import FlowParser._
-import flow.OperatorPrecedence
 
 class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
+
   override def visitProgram(context: ProgramContext) =
     Program(context.statement.toList.map(visitStatement).filter(_ != null))
 

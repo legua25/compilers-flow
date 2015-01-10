@@ -2,10 +2,12 @@ package flow
 
 import scala.collection.mutable
 
-import flow.{ Type => _ }
 import llvm._
 
 trait GlobalCodegen extends LlvmNames {
+
+  // TODO: clean up this variadic shit
+  case class QualifiedName(parts: String*) { require(!parts.isEmpty) }
 
   private val definitionList = mutable.ListBuffer.empty[Definition]
 
@@ -19,12 +21,10 @@ trait GlobalCodegen extends LlvmNames {
     s".$n"
   }
 
-  def declare(
+  def global_declareUnsafe(
     returnType: llvm.Type,
-    qualifiedName: QualifiedName,
-    parameters: Seq[llvm.Parameter]) = {
-
-    val name = qualifiedName.parts.map(safeNameFrom).mkString("_")
+    name: String,
+    parameters: Seq[Parameter]) = {
 
     val function =
       Function(
@@ -40,7 +40,16 @@ trait GlobalCodegen extends LlvmNames {
     reference
   }
 
-  def define(
+  def global_declare(
+    returnType: llvm.Type,
+    qualifiedName: QualifiedName,
+    parameters: Seq[Parameter]) = {
+
+    val name = qualifiedName.parts.map(safeNameFrom).mkString("_")
+    global_declareUnsafe(returnType, name, parameters)
+  }
+
+  def global_define(
     reference: GlobalReference,
     parameters: Seq[llvm.Parameter],
     basicBlocks: Seq[BasicBlock]) = {
@@ -60,12 +69,12 @@ trait GlobalCodegen extends LlvmNames {
     definitionList(declaredFunctions(reference)) = GlobalDefinition(function)
   }
 
-  def defineInternal(function: Function) = {
+  def global_defineInternal(function: Function) = {
     definitionList += GlobalDefinition(function)
     GlobalReference(function.returnType, function.name)
   }
 
-  def define(variable: GlobalVariable) = {
+  def global_define(variable: GlobalVariable) = {
     ???
   }
 
@@ -81,20 +90,5 @@ trait GlobalCodegen extends LlvmNames {
 
   def module(name: String) =
     Module(name, definitions)
-
-  case class QualifiedName(parts: String*)
-
-  object QualifiedName {
-
-    def apply(part0: String, parts: String*): QualifiedName =
-      QualifiedName(part0 +: parts: _*)
-
-    def apply(part0: String, part1: String, parts: String*): QualifiedName =
-      QualifiedName(part0 +: part1 +: parts: _*)
-
-    def apply(part0: String, part1: String, part2: String, parts: String*): QualifiedName =
-      QualifiedName(part0 +: part1 +: part2 +: parts: _*)
-
-  }
 
 }

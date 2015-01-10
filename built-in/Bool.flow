@@ -7,15 +7,13 @@ type Bool = {
 
   external def !=(that: Bool): Bool
 
-  external def >(that: Bool): Bool
-
-  external def >=(that: Bool): Bool
-
   external def <(that: Bool): Bool
 
   external def <=(that: Bool): Bool
 
-  external def printLine(): Unit
+  external def >(that: Bool): Bool
+
+  external def >=(that: Bool): Bool
 
   external def not: Bool
 

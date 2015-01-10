@@ -1,10 +1,11 @@
-package flow
-
-import syntax.{ Expression, InfixExpression }
+package flow.syntax
 
 trait OperatorPrecedence {
+
   sealed trait Associativity
+
   case object Left extends Associativity
+
   case object Right extends Associativity
 
   def precedenceOf(operator: String) = operator.head match {
@@ -39,4 +40,5 @@ trait OperatorPrecedence {
         InfixExpression(e00, op0, reparented(InfixExpression(e01, op1, e11)))
     case e: Expression => e
   }
+
 }

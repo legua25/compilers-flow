@@ -7,14 +7,12 @@ type Char = {
 
   external def !=(that: Char): Bool
 
-  external def >(that: Char): Bool
-
-  external def >=(that: Char): Bool
-
   external def <(that: Char): Bool
 
   external def <=(that: Char): Bool
 
-  external def printLine(): Unit
+  external def >(that: Char): Bool
+
+  external def >=(that: Char): Bool
 
 }
