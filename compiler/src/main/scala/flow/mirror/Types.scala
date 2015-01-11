@@ -16,11 +16,11 @@ sealed trait Type {
 
 }
 
-case class NativeType[A <: llvm.Type](name: String, toLlvm: A) extends Type
+case class SingleType[A <: llvm.Type](name: String, toLlvm: A) extends Type
 
-case class DefinedType(name: String) extends Type {
+case class StructureType(name: String) extends Type {
 
-  def toLlvm = { println(name); ??? }
+  def toLlvm = llvm.Type.Structure()
 
 }
 
@@ -41,7 +41,7 @@ trait Types {
   def types_declare(name: String): Type = {
     val aType = NativeTypes.get(name) match {
       case Some(nativeType) => nativeType
-      case None             => DefinedType(name)
+      case None             => ???
     }
 
     types_declare(aType)

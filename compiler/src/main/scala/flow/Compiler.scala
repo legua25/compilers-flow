@@ -181,52 +181,30 @@ trait Compiler
           case None       => error(s"Type $aType does not define $name.")
         }
 
-      // TODO: remove duplicit compilation
       case syn.Application(id @ syn.Id(name), arguments) =>
-        val (args, argTypes) = arguments.map(compile).unzip
+        val compiledArguments = arguments.map(compile)
+        val (args, argTypes) = compiledArguments.unzip
         defFor(name, Some(argTypes)) match {
           case Some(defn) => compile(defn, args)
-          case None       => compile(syn.Application(syn.Parenthesized(id), arguments))
+          case None =>
+            compileApplication(compile(id), "apply", compiledArguments)
         }
 
-      // TODO: remove duplicit compilation
+      case syn.Application(syn.Selection(id: syn.Id, name), arguments) =>
+        val compiledArguments = arguments.map(compile)
+        compileApplication(compile(id), name, compiledArguments, Some(id))
+
       case syn.Application(syn.Selection(expr, name), arguments) =>
-        val (obj, aType) = compile(expr)
-        val (args, argTypes) = arguments.map(compile).unzip
-        defFor(aType, name, Some(argTypes)) match {
-          case Some(defn) =>
-            compile(defn, obj +: args)
-          case None if name.endsWith("=") && arguments.size == 1 =>
-            compile(
-              syn.Assignment(
-                expr,
-                syn.Application(
-                  syn.Selection(expr, name.substring(0, name.size - 1)),
-                  arguments)))
-          case None =>
-            error(s"Type $aType does not define $name${argTypes.mkString("(", ",", ")")}.")
-        }
+        val compiledArguments = arguments.map(compile)
+        compileApplication(compile(expr), name, compiledArguments)
 
       case syn.Application(expr, arguments) =>
-        compile(syn.Application(syn.Selection(expr, "apply"), arguments))
+        val compiledArguments = arguments.map(compile)
+        compileApplication(compile(expr), "apply", compiledArguments)
 
-      case syn.Assignment(syn.Id(name), expr) =>
-        defFor(name) match {
-          case Some(defn @ VarDef(_, declaredType, isMutable)) =>
-            if (!isMutable)
-              error(s"Cannot reassign into val $name.")
-
-            val e @ (_, actualType) = compile(expr)
-
-            if (actualType != declaredType)
-              error(s"Cannot assign type $actualType to $declaredType.")
-
-            assign(defn, e)
-
-            (unit, Unit)
-          case _ =>
-            error(s"$name is not defined.")
-        }
+      case syn.Assignment(syn.Id(name), argument) =>
+        val compiledArgument = compile(argument)
+        compileAssignment(name, compiledArgument)
 
       case syn.Assignment(syn.Selection(expr0, name), expr1) =>
         val (obj, aType) = compile(expr0)
@@ -238,16 +216,10 @@ trait Compiler
         (unit, Unit)
 
       case syn.Assignment(syn.Application(expr0, arguments), expr1) =>
-        val (obj, objType) = compile(expr0)
-        val (sub, subType) = compile(expr1)
-        val (args, argTypes0) = arguments.map(compile).unzip
-        val argTypes = argTypes0 :+ subType
-        defFor(objType, "update", Some(argTypes)) match {
-          case Some(defn) =>
-            compile(defn, args :+ sub)
-          case None =>
-            error(s"Type objType does not define update${argTypes.mkString("(", ",", ")")}.")
-        }
+        val obj = compile(expr0)
+        val sub = compile(expr1)
+        val compiledArguments = arguments.map(compile)
+        compileApplication(obj, "update", compiledArguments :+ sub)
 
       case syn.Assignment(_, _) =>
         error(s"$expression is not valid assignment.")
@@ -266,6 +238,52 @@ trait Compiler
       case syn.Parenthesized(e)     => compile(e)
 
       case e                        => println(e); ???
+    }
+  }
+
+  def compileApplication(
+    compiledExpr: CompiledExpression,
+    name: String,
+    compiledArguments: Seq[CompiledExpression],
+    assignTo: Option[syn.Id] = None): CompiledExpression = {
+
+    val (obj, aType) = compiledExpr
+    val (args, argTypes) = compiledArguments.unzip
+
+    debug(s"Compiling Application ($aType, $name, $argTypes, $assignTo)")
+
+    defFor(aType, name, Some(argTypes)) match {
+      case Some(defn) =>
+        compile(defn, obj +: args)
+      case None if name.endsWith("=") &&
+        assignTo.isDefined =>
+        val Some(syn.Id(lval)) = assignTo
+        val compiledArgument = compileApplication(
+          compiledExpr,
+          name.substring(0, name.size - 1),
+          compiledArguments)
+        compileAssignment(lval, compiledArgument)
+      case None =>
+        error(s"Type $aType does not define $name${argTypes.mkString("(", ",", ")")}.")
+    }
+  }
+
+  def compileAssignment(name: String, compiledArgument: CompiledExpression) = {
+    defFor(name) match {
+      case Some(defn @ VarDef(_, declaredType, isMutable)) =>
+        if (!isMutable)
+          error(s"Cannot reassign into val $name.")
+
+        val e @ (_, actualType) = compiledArgument
+
+        if (actualType != declaredType)
+          error(s"Cannot assign type $actualType to $declaredType.")
+
+        assign(defn, e)
+
+        (unit, Unit)
+      case _ =>
+        error(s"$name is not defined.")
     }
   }
 
