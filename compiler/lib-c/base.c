@@ -160,6 +160,33 @@ void String_reverse_String_(String *result, String *this) {
   result->chars = dest;
 }
 
+void String_$plus_String_String(String *result, String *this, String *that) {
+  long long size = this->size + that->size;
+  long long nrOfChars = size + 1;
+  char *dest = malloc(nrOfChars * sizeof(char));
+
+  char *p1, *p2, *end;
+  
+  p1 = dest;
+  p2 = this->chars;
+  end = &this->chars[this->size];
+
+  for (; p2 <= end; ++p1, ++p2)
+    *p1 = *p2;
+  
+  p1 = &dest[this->size];
+  p2 = that->chars;
+  end = &that->chars[that->size];
+
+  for (; p2 <= end; ++p1, ++p2)
+    *p1 = *p2;
+
+  dest[size] = '\0';
+
+  result->size = size;
+  result->chars = dest;
+}
+
 // IntArray ===
 
 void IntArrayCompanion_apply_IntArrayCompanion_Int(IntArray *result, int companion, long long size) {

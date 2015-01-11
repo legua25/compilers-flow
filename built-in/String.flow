@@ -11,4 +11,6 @@ type String = {
 
   external def reverse: String
 
+  external def +(that: String): String
+
 }
