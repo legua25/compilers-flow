@@ -24,13 +24,13 @@ trait GlobalCodegen extends LlvmNames {
   def global_declareUnsafe(
     returnType: llvm.Type,
     name: String,
-    parameters: Seq[Parameter]) = {
+    parameterTypes: Seq[llvm.Type]) = {
 
     val function =
       Function(
         returnType = returnType,
         name = name,
-        parameters = parameters)
+        parameters = parameterTypes.map(t => llvm.Parameter(t)))
 
     val reference = GlobalReference(returnType, name)
 
@@ -43,10 +43,10 @@ trait GlobalCodegen extends LlvmNames {
   def global_declare(
     returnType: llvm.Type,
     qualifiedName: QualifiedName,
-    parameters: Seq[Parameter]) = {
+    parameterTypes: Seq[llvm.Type]) = {
 
     val name = qualifiedName.parts.map(safeNameFrom).mkString("_")
-    global_declareUnsafe(returnType, name, parameters)
+    global_declareUnsafe(returnType, name, parameterTypes)
   }
 
   def global_define(
@@ -75,7 +75,12 @@ trait GlobalCodegen extends LlvmNames {
   }
 
   def global_define(variable: GlobalVariable) = {
-    ???
+    definitionList += GlobalDefinition(variable)
+    GlobalReference(variable.aType.pointer, variable.name)
+  }
+
+  def global_define(typeDefinition: TypeDefinition) = {
+    definitionList += typeDefinition
   }
 
   def definitions = {

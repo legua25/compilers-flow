@@ -111,6 +111,9 @@ trait BlockCodegen extends LlvmNames {
   def call(aType: llvm.Type, function: Operand, arguments: Seq[Operand]) =
     instruction(aType, Call(function, arguments.map(a => (a, Seq()))))
 
+  def call(function: Operand, arguments: Seq[Operand]) =
+    instruction(Call(function, arguments.map(a => (a, Seq()))))
+
   def br(condition: Operand, trueDest: Name, falseDest: Name) =
     terminator(CondBr(condition, trueDest, falseDest))
 

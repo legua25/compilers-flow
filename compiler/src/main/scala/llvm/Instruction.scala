@@ -381,7 +381,7 @@ case class GetElementPtr(
       "getelementptr",
       if (inBounds) s"inbounds" else "",
       address.typedRepr,
-      indices.map(op => s", ${op.typedRepr}")).filter(_ != "").mkString(" ")
+      indices.map(op => s", ${op.typedRepr}").mkString).filter(_ != "").mkString(" ")
   }
 }
 

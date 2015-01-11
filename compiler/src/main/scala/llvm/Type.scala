@@ -6,12 +6,12 @@ package llvm
 sealed abstract class Type(val llvm: String) {
   def pointer = Type.Pointer(this, None)
 }
-  
+
 /**
  * http://llvm.org/docs/LangRef.html#first-class-types
  */
 abstract class FirstClassType(llvm: String) extends Type(llvm)
-  
+
 /**
  * http://llvm.org/docs/LangRef.html#single-value-types
  */
@@ -21,7 +21,7 @@ abstract class SingleValueType(llvm: String) extends FirstClassType(llvm)
  * <http://llvm.org/docs/LangRef.html#floating-point-types>
  */
 abstract class FloatingPointType(llvm: String) extends SingleValueType(llvm)
-  
+
 /**
  * http://llvm.org/docs/LangRef.html#aggregate-types
  */
@@ -46,12 +46,12 @@ object Type {
    */
   case class FunctionType(returnType: Type, parameterTypes: Seq[Type], isVariadic: Boolean)
     extends Type(makeFunctionType(returnType, parameterTypes, isVariadic))
-  
+
   /**
    * <http://llvm.org/docs/LangRef.html#integer-type>
    */
   case class Int(bitWidth: scala.Int) extends SingleValueType(s"i$bitWidth")
-  
+
   case object Half extends FloatingPointType("half")
 
   case object Float extends FloatingPointType("float")
@@ -68,7 +68,7 @@ object Type {
    * http://llvm.org/docs/LangRef.html#x86-mmx-type
    */
   case object X86_MMX extends SingleValueType("x86_mmx")
-  
+
   private def makePointerType(refType: Type, addrSpace: Option[AddrSpace]): String = {
     if (addrSpace.isEmpty)
       s"${refType.llvm}*"
@@ -85,8 +85,8 @@ object Type {
   /**
    * <http://llvm.org/docs/LangRef.html#vector-type>
    */
-  case class Vector[A <: Type](nrOfElements: Int, elementType: A)
-    extends SingleValueType(s"<$nrOfElements x $elementType>")
+  case class Vector[A <: Type](nrOfElements: scala.Int, elementType: A)
+    extends SingleValueType(s"<$nrOfElements x ${elementType.llvm}>")
 
   case object Label extends FirstClassType("label") {
     override def pointer = Int(8).pointer
@@ -100,15 +100,15 @@ object Type {
   /**
    * <http://llvm.org/docs/LangRef.html#array-type>
    */
-  case class Array[A <: Type](nrOfElements: Int, elementType: A)
-    extends AggregateType(s"[$nrOfElements x $elementType]")
+  case class Array[A <: Type](nrOfElements: scala.Int, elementType: A)
+    extends AggregateType(s"[$nrOfElements x ${elementType.llvm}]")
 
   private def makeStructureType(elementTypes: Seq[Type], isPacked: Boolean): String = {
     val types = elementTypes.map(_.llvm).mkString(", ")
     if (isPacked)
-      "<{" + types + "}>"
+      "<{ " + types + " }>"
     else
-      "{" + types + "}"
+      "{ " + types + " }"
   }
 
   /**

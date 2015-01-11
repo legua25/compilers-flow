@@ -9,6 +9,6 @@ type String = {
 
   external def apply(index: Int): Char
 
-  //external def reverse: String
+  external def reverse: String
 
 }

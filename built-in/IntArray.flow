@@ -5,6 +5,9 @@ type IntArray = {
 
   external static def apply(size: Int): IntArray
 
+  static def apply(): IntArray =
+    IntArray(0)
+
   external def size: Int
 
   external def capacity: Int

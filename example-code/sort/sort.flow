@@ -1,31 +1,33 @@
-val n: Int = readInt()
-val array: IntArray = IntArray.apply(n)
+val n = readInt()
+val array = IntArray(n)
 
-var i: Int = 0
+var i = 0
 
 while i < n do {
-  array.update(i, readInt())
-  i = i + 1
+  array(i) = readInt()
+  i += 1
 }
 
-var nrOfSorted: Int = 1
+var nrOfSorted = 1
 
 while nrOfSorted < n do {
-  var i: Int = nrOfSorted
+  var i = nrOfSorted
 
-  while i > 0 && array.apply(i - 1) > array.apply(i) do {
-    val tmp: Int = array.apply(i - 1)
-    array.update(i - 1, array.apply(i))
-    array.update(i, tmp)
+  // while i > 0 && array(i - 1) > array(i) do {
+  // doesn't work until && is shortcircuited
+  while if i > 0 then array(i - 1) > array(i) else false do {
+    val tmp: Int = array(i - 1)
+    array(i - 1) = array(i)
+    array(i) = tmp
 
-    i = i - 1
+    i -= 1
   }
 
-  nrOfSorted = nrOfSorted + 1
+  nrOfSorted += 1
 }
 
 i = 0
 while i < n do {
-  printLine(array.apply(i))
-  i = i + 1
+  printLine(array(i))
+  i += 1
 }

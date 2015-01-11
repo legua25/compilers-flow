@@ -167,11 +167,23 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
 
   override def visitChar(context: CharContext) = {
     val literal = context.CHAR.getText()
+    val char = literal.substring(1, literal.size - 1) match {
+      case "\\b"   => '\b'
+      case "\\t"   => '\t'
+      case "\\n"   => '\n'
+      case "\\f"   => '\f'
+      case "\\r"   => '\r'
+      case "\\\""  => '\\'
+      case "\\'"   => '\''
+      case "\\\\"  => '\\'
+      case literal => literal(1)
+    }
 
-    if (literal(1) == '\\')
-      CharLiteral(literal(2))
-    else
-      CharLiteral(literal(1))
+    val message = "Parsed character literal " + literal + " => " + char
+    flow.debug(message)
+    flow.debug(literal.substring(0, literal.size - 1))
+
+    CharLiteral(char)
   }
 
   override def visitString(context: StringContext) = {

@@ -25,7 +25,8 @@ object Flow extends Compiler {
     debug: Boolean = false,
     tree: Boolean = false,
     outputFile: Option[File] = None,
-    inputFile: File = null)
+    inputFile: Option[File] = None,
+    sourceFile: File = null)
 
   val argumentParser = new scopt.OptionParser[Config](name) {
     head(s"${Flow.name} ${Flow.version}")
@@ -40,11 +41,15 @@ object Flow extends Compiler {
     opt[Unit]('t', "tree")
       .action { (_, c) => c.copy(tree = true) }
       .text("show parse tree")
-    opt[File]("output")
+    opt[File]('o', "output")
       .action { (f, c) => c.copy(outputFile = Some(f)) }
+      .text("compiled output")
+    opt[File]('i', "input")
+      .action { (f, c) => c.copy(inputFile = Some(f)) }
+      .text("input to program when run")
     arg[File]("source")
-      .action { (f, c) => c.copy(inputFile = f) }
-      .text("source to compile")
+      .action { (f, c) => c.copy(sourceFile = f) }
+      .text("source file to compile")
   }
 
   val libraryFiles = {
@@ -55,22 +60,22 @@ object Flow extends Compiler {
 
   def main(args: Array[String]): Unit = {
     argumentParser.parse(args, Config()) match {
-      case Some(Config(run, verbose, debug, tree, outputFileOpt, inputFile)) =>
+      case Some(Config(run, verbose, debug, tree, outputFileOpt, inputFile, sourceFile)) =>
         flow.debugMode = debug
 
-        val outputFile = outputFileOpt.getOrElse(inputFile.withExtension(".ll"))
+        val outputFile = outputFileOpt.getOrElse(sourceFile.withExtension(".ll"))
 
         val libraries = libraryFiles.map(f => programFrom(f, verbose))
-        val program = programFrom(inputFile, verbose, tree)
+        val program = programFrom(sourceFile, verbose, tree)
 
         if (verbose)
-          println(s"Compiling ${inputFile.name}.")
+          println(s"Compiling ${sourceFile.name}.")
 
-        val module = compile(inputFile.name, program, libraries)
+        val module = compile(sourceFile.name, program, libraries)
         writeModuleTo(outputFile, module, verbose)
 
         if (run)
-          s"./optnrun.sh $outputFile".!
+          s"./optnrun.sh $outputFile < $inputFile".!
       case None =>
     }
   }

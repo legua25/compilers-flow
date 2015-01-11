@@ -61,6 +61,7 @@ trait Compiler
 
   //   TODO: should this exist ?
   def compile(defn: Def, arguments: Seq[llvm.Operand] = Seq()) = {
+    debug(s"Compiling $defn(${arguments.mkString(", ")}).")
     (defn.compile(arguments), defn.resultType)
   }
 
@@ -177,7 +178,7 @@ trait Compiler
       case syn.Selection(expr, name) =>
         val (obj, aType) = compile(expr)
         defFor(aType, name) match {
-          case Some(defn) => compile(defn)
+          case Some(defn) => compile(defn, Seq(obj))
           case None       => error(s"Type $aType does not define $name.")
         }
 
@@ -229,7 +230,7 @@ trait Compiler
       case syn.CharLiteral(value)   => (constantChar(value), Char)
 
       // TODO: StringLiteral
-      case syn.StringLiteral(value) => (constantChar(value(0)), Char)
+      case syn.StringLiteral(value) => (constantString(value), String)
 
       case syn.IntLiteral(value)    => (constantInt(value), Int)
 
@@ -313,6 +314,20 @@ trait Compiler
 
   }
 
+  def globalDef(
+    name: String,
+    parameterTypes: Option[Seq[Type]],
+    resultType: Type,
+    reference: llvm.GlobalReference) = {
+
+    resultType match {
+      case resultType: StructureType =>
+        StructureReturningDef(name, parameterTypes, resultType, reference)
+      case _ =>
+        GlobalDef(name, parameterTypes, resultType, reference)
+    }
+  }
+
   def declare(aType: Type, defn: syn.MemberDef): Declaration = defn match {
     case syn.Def(name, parameters, typeAnn, body) =>
       val typedParameters = typedParametersFrom(parameters)
@@ -325,10 +340,11 @@ trait Compiler
         QualifiedName(aType.name +: name +: parameterTypeNames: _*)
       val resultType = typeFor(typeAnn)
 
-      val decl @ (GlobalDef(_, _, _, reference), _, _) =
+      // TODO: StructureReturningDef makes a mess
+      val decl @ (_, reference, _, _) =
         declare(name, qualifiedName, Some(typedParametersWithThis), resultType)
 
-      types_define(aType, GlobalDef(name, parameterTypes, resultType, reference))
+      types_define(aType, globalDef(name, parameterTypes, resultType, reference))
 
       decl
     case syn.StaticDef(defn) =>
@@ -339,8 +355,8 @@ trait Compiler
 
   def define(aType: Type, defn: syn.MemberDef, decl: Declaration): Unit = defn match {
     case syn.Def(name, parameters, typeAnn, body) =>
-      val (defn, parameters, resultType) = decl
-      define(defn, parameters, resultType, body)
+      val (defn, ref, parameters, resultType) = decl
+      define(defn, ref, parameters, resultType, body)
     case syn.StaticDef(defn) =>
       define(aType.companion, defn, decl)
     case syn.VarDef(name, typeAnn, expr, isMutable) => ???
@@ -350,13 +366,13 @@ trait Compiler
   def defineGlobals(globals: Seq[syn.Def]) = {
     val decls =
       for (synDefn <- globals) yield {
-        val (defn, parameters, resultType) = declare(synDefn)
+        val (defn, ref, parameters, resultType) = declare(synDefn)
         scope.put(defn)
-        (defn, parameters, resultType, synDefn.body)
+        (defn, ref, parameters, resultType, synDefn.body)
       }
 
-    for ((defn, parameters, resultType, body) <- decls)
-      define(defn, parameters, resultType, body)
+    for ((defn, ref, parameters, resultType, body) <- decls)
+      define(defn, ref, parameters, resultType, body)
   }
 
   def declare(defn: syn.Def): Declaration = defn match {
@@ -376,10 +392,11 @@ trait Compiler
   def typedParametersFrom(parameters: Option[Seq[syn.Parameter]]) =
     parameters.map(_.map(typedParameterFrom))
 
-  type Declaration = (GlobalDef, Option[Seq[Parameter]], Type)
+  type Declaration = (Def, llvm.GlobalReference, Option[Seq[Parameter]], Type)
 
+  // TODO: there's sill some copy&paste here
   /**
-   * Declares definition for future use. Returns GlobalDef.
+   * Declares definition for future use. Returns Declaration.
    */
   def declare(
     name: String,
@@ -388,14 +405,19 @@ trait Compiler
     resultType: Type): Declaration = {
 
     val parameterTypes = parameters.map(_.map(_.aType))
+    val llvmParameterTypes = parameters.getOrElse(Seq()).map(_.aType.toLlvm)
 
-    val llvmParameters = parameters.getOrElse(Seq()).map(p => llvm.Parameter(p.aType.toLlvm))
-    val returnType = resultType.toLlvm
+    val (actualParameterTypes, returnType) = resultType match {
+      case resultType: StructureType =>
+        (resultType.toLlvm +: llvmParameterTypes, llvm.Type.Void)
+      case _ =>
+        (llvmParameterTypes, resultType.toLlvm)
+    }
 
-    val reference = global_declare(returnType, qualifiedName, llvmParameters)
-    val defn = GlobalDef(name, parameterTypes, resultType, reference)
+    val reference = global_declare(returnType, qualifiedName, actualParameterTypes)
+    val defn = globalDef(name, parameterTypes, resultType, reference)
 
-    (defn, parameters, resultType)
+    (defn, reference, parameters, resultType)
   }
 
   def newParameter(name: String, aType: Type) = {
@@ -411,32 +433,51 @@ trait Compiler
    * Defines previously declared definition.
    */
   def define(
-    defn: GlobalDef,
+    defn: Def,
+    reference: llvm.GlobalReference,
     parameters: Option[Seq[Parameter]],
     declaredType: Type,
     body: Option[syn.Expression]): Unit = {
-
-    val reference = defn.reference
 
     body match {
       case Some(body) =>
         scoped {
           setBlock(newBlock("entry"))
-          val llvmParameters = parameters map {
-            _ map {
-              case Parameter(name, aType) =>
-                newParameter(name, aType)
-            }
-          } getOrElse Seq()
+
+          val parameterTypes = parameters.map(_.map(_.aType))
+          val llvmParameters = parameters getOrElse Seq() map {
+            case Parameter(name, aType) =>
+              newParameter(name, aType)
+          }
+
+          val (actualParameters, returnType) = declaredType match {
+            case resultType: StructureType =>
+              // TODO: <sarcasm>this is really nice</sarcasm>
+              val resultParameter = newParameter("", resultType)
+              (resultParameter +: llvmParameters, llvm.Type.Void)
+            case _ =>
+              (llvmParameters, declaredType.toLlvm)
+          }
 
           val (value, actualType) = compile(body)
 
           if (actualType != declaredType)
             error(s"Declared result type $declaredType does not match actual type $actualType.")
 
-          ret(value)
+          defn match {
+            case StructureReturningDef(_, _, resultType, _) =>
+              defFor("") match {
+                case Some(Ref(ref)) =>
+                  val result = load(resultType.alias, value)
+                  val ptr = load(resultType.toLlvm, ref)
+                  store(result, ptr)
+                  ret()
+              }
+            case _ =>
+              ret(value)
+          }
 
-          global_define(reference, llvmParameters, makeBasicBlocks())
+          global_define(reference, actualParameters, makeBasicBlocks())
         }
       case None =>
       // External definition.

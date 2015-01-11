@@ -2,20 +2,58 @@
  * Predefined functions
  */
 
-//external def readLine(): String
+external def readLine(): String
 
 external def readInt(): Int
 
-external def printLine(a: Bool): Unit
+def printLine(): Unit =
+  print('\n')
 
-external def printLine(a: Char): Unit
+external def print(a: Bool): Unit
 
-external def printLine(a: Int): Unit
+def printLine(a: Bool): Unit = {
+  print(a)
+  printLine()
+}
 
-external def printLine(a: Float): Unit
+external def print(a: Char): Unit
 
-external def printLine(a: Unit): Unit
+def printLine(a: Char): Unit = {
+  print(a)
+  printLine()
+}
 
-external def printLine(a: IntArray): Unit
+external def print(a: Int): Unit
 
-external def printLine(a: String): Unit
+def printLine(a: Int): Unit = {
+  print(a)
+  printLine()
+}
+
+external def print(a: Float): Unit
+
+def printLine(a: Float): Unit = {
+  print(a)
+  printLine()
+}
+
+external def print(a: Unit): Unit
+
+def printLine(a: Unit): Unit = {
+  print(a)
+  printLine()
+}
+
+external def print(a: IntArray): Unit
+
+def printLine(a: IntArray): Unit = {
+  print(a)
+  printLine()
+}
+
+external def print(a: String): Unit
+
+def printLine(a: String): Unit = {
+  print(a)
+  printLine()
+}

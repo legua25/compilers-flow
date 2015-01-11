@@ -8,19 +8,19 @@ import llvm.{ IntegerPredicate => IP, FloatingPointPredicate => FPP, _ }
 
 object NativeTypes {
 
-  val Bool = NativeType("Bool", llvm.Type.Int(1))
+  val Bool = SingleType("Bool", llvm.Type.Int(1))
 
-  val Char = NativeType("Char", llvm.Type.Int(8))
+  val Char = SingleType("Char", llvm.Type.Int(8))
 
-  val String = NativeType("String", llvm.Type.Int(8))
+  val String = StructureType("String")
 
-  val Int = NativeType("Int", llvm.Type.Int(64))
+  val Int = SingleType("Int", llvm.Type.Int(64))
 
-  val Float = NativeType("Float", llvm.Type.Double)
+  val Float = SingleType("Float", llvm.Type.Double)
 
-  val Unit = NativeType("Unit", llvm.Type.Int(1))
+  val Unit = SingleType("Unit", llvm.Type.Int(1))
 
-  val IntArray = NativeType("IntArray", llvm.Type.Int(8))
+  val IntArray = StructureType("IntArray")
 
   def get(name: String): Option[Type] = name match {
     case "Bool"     => Some(Bool)
@@ -38,6 +38,26 @@ object NativeTypes {
 trait NativeTypes {
   self: GlobalCodegen with BlockCodegen with CompiledDefs =>
   import NativeTypes._
+
+  // TODO: this shouldn't be this way
+  global_define(
+    TypeDefinition(
+      IntArray.alias.name,
+      llvm.Type.Structure(
+        Seq(
+          Int.toLlvm,
+          Int.toLlvm,
+          Int.toLlvm.pointer),
+        false)))
+
+  global_define(
+    TypeDefinition(
+      String.alias.name,
+      llvm.Type.Structure(
+        Seq(
+          Int.toLlvm,
+          Char.toLlvm.pointer),
+        false)))
 
   def nativeDefFor(aType: Type, signature: Signature): Option[Def] = {
     for {
@@ -182,19 +202,47 @@ trait NativeTypes {
     .toMap
 
   def constantBool(value: Boolean) =
-    if (value) llvm.Constant.True
-    else llvm.Constant.False
+    if (value) Constant.True
+    else Constant.False
 
   def constantChar(value: Char) =
-    llvm.Constant.Int(Char.toLlvm, value.toInt.toString)
+    Constant.Int(Char.toLlvm, value.toInt.toString)
+
+  val newString =
+    global_declareUnsafe(
+      Type.Void,
+      "newString",
+      Seq(String.toLlvm, Int.toLlvm, Char.toLlvm.pointer))
+
+  def constantString(value: String) = {
+    val constArray =
+      global_define(
+        GlobalVariable(
+          name = newGlobalName,
+          linkage = Linkage.Private,
+          aType = Type.Array(value.size + 1, Type.Int(8)),
+          initializer = Some(Constant.String(value))))
+
+    val zero = Constant.Int(Type.Int(32), "0")
+
+    val chars = instruction(
+      Char.toLlvm.pointer,
+      GetElementPtr(
+        constArray,
+        Seq(zero, zero)))
+
+    val result = alloca(String.alias)
+    call(newString, Seq(result, constantInt(value.size), chars))
+    result
+  }
 
   def constantInt(value: BigInt) =
-    llvm.Constant.Int(Int.toLlvm, value.toString)
+    Constant.Int(Int.toLlvm, value.toString)
 
   def constantFloat(value: String) =
-    llvm.Constant.Float(Float.toLlvm, value)
+    Constant.Float(Float.toLlvm, value)
 
   def unit =
-    constantBool(true)
+    constantBool(false)
 
 }

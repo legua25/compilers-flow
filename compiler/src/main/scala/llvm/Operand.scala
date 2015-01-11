@@ -1,12 +1,14 @@
 package llvm
 
+import java.lang.{ String => SString }
+
 sealed trait Operand {
   def aType: Type
-  def repr: String
-  def typedRepr: String
+  def repr: SString
+  def typedRepr: SString
 }
 
-abstract class TypedOperand(val aType: Type, val repr: String) extends Operand {
+abstract class TypedOperand(val aType: Type, val repr: SString) extends Operand {
   def typedRepr = s"${aType.llvm} $repr"
 }
 
@@ -15,11 +17,11 @@ abstract class TypedOperand(val aType: Type, val repr: String) extends Operand {
  */
 sealed trait Constant extends Operand
 
-abstract class TypedConstant(val aType: Type, val repr: String) extends Constant {
+abstract class TypedConstant(val aType: Type, val repr: SString) extends Constant {
   def typedRepr = s"${aType.llvm} $repr"
 }
 
-abstract class UntypedConstant(val repr: String) extends Constant {
+abstract class UntypedConstant(val repr: SString) extends Constant {
   def aType = Type.Void
   def typedRepr = repr
 }
@@ -30,16 +32,16 @@ object Constant {
 
   case object False extends TypedConstant(Type.Int(1), "false")
 
-  case class Int(override val aType: Type.Int, value: String)
+  case class Int(override val aType: Type.Int, value: SString)
     extends TypedConstant(aType, value)
 
-  case class Float(override val aType: FloatingPointType, value: String)
+  case class Float(override val aType: FloatingPointType, value: SString)
     extends TypedConstant(aType, value)
 
   case class Null[A <: Type](override val aType: Type.Pointer[A])
     extends TypedConstant(aType, "null")
 
-  private def makeStructRepr(elements: Seq[Constant], isPacked: Boolean): String = {
+  private def makeStructRepr(elements: Seq[Constant], isPacked: Boolean): SString = {
     val (open, close) = if (isPacked) ("<{", "}>") else ("{", "}")
     elements.map(_.typedRepr).mkString(open, ", ", close)
   }
@@ -49,6 +51,9 @@ object Constant {
 
   case class Array(elementType: Type, elements: Seq[Constant])
     extends UntypedConstant(elements.map(_.typedRepr).mkString("[", ", ", "]"))
+
+  case class String(value: SString)
+    extends UntypedConstant("c\"" + value + "\\00\"")
 
   case class Vector(elements: Seq[Constant])
     extends UntypedConstant(elements.map(_.typedRepr).mkString("<", ", ", ">"))

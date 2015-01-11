@@ -2,42 +2,44 @@
 #include <stdlib.h>
 #include <string.h>
 
-void error(char* message) {
-  printf("%s\n", message);
-  exit(1);
-}
-
 typedef struct String String;
 struct String {
   long long size;
-  char * chars;
+  char *chars;
 };
 
 typedef struct IntArray IntArray;
 struct IntArray {
   long long size;
   long long capacity;
-  long long * ints;
+  long long *ints;
 };
 
 // Simple ===
 
-String readLine() {
+// void debugString(String *string) {
+//   printf("String { %lld \"%s\" }\n", string->size, string->chars);
+// }
+
+void readLine(String *result) {
   int maxSize = 256;
-  char line[maxSize];
-  fgets(line, maxSize, stdin);
-  
+  char *line = malloc(maxSize * sizeof(char));
+
   int i = 0;
   int c;
-  for (; i < maxSize && (c = getchar()) != EOF && c != '\n'; ++i)
+  for (; (c = getchar()) != EOF && c != '\n'; ++i) {
+    if (i == maxSize) {
+      maxSize *= 2;
+      line = realloc(line, maxSize);
+    }
+
     line[i] = c;
+  }
 
-  if (i < maxSize)
-    line[i] = '\0';
+  line[i] = '\0';
 
-  String string = { i, line };
-
-  return string;
+  result->size = i;
+  result->chars = line;
 }
 
 long long readInt() {
@@ -46,34 +48,34 @@ long long readInt() {
   return value;
 }
 
-void printLine_Bool(int value) {
+void print_Bool(int value) {
   if (value)
-    printf("true\n");
+    printf("true");
   else
-    printf("false\n");
+    printf("false");
 }
 
-void printLine_Char(char value) {
-  printf("%c\n", value);
+void print_Char(char value) {
+  printf("%c", value);
 }
 
-void printLine_String(String * string) {
-  printf("%s\n", string->chars);
+void print_String(String *string) {
+  printf("%s", string->chars);
 }
 
-void printLine_Int(long long value) {
-  printf("%lld\n", value);
+void print_Int(long long value) {
+  printf("%lld", value);
 }
 
-void printLine_Float(double value) {
-  printf("%.5f\n", value);
+void print_Float(double value) {
+  printf("%.5f", value);
 }
 
-void printLine_Unit() {
-  printf("{}\n");
+void print_Unit() {
+  printf("{}");
 }
 
-void printLine_IntArray(IntArray * array) {
+void print_IntArray(IntArray *array) {
   printf("IntArray(");
   long long i;
   for (i = 0; i < array->size; ++i) {
@@ -96,118 +98,153 @@ long long capacityFor(long long size) {
   return capacity;
 }
 
-long long * newArray(long long size) {
-  long long * array = malloc(size * sizeof(long long));
-  long long * p = array;
-  long long * end = array + size;
-  
-  for (; p != end; ++p)
+long long *newArray(long long size) {
+  long long *array = malloc(size * sizeof(long long));
+  long long *p = array;
+  long long *end = &array[size];
+
+  for (; p < end; ++p)
     *p = 0;
-  
+
   return array;
 }
 
-void copy(long long * dest, long long * source, long long size) {
+void copyInts(long long *dest, long long *source, long long size) {
   if (dest != NULL && source != NULL) {
-    long long * p1 = dest;
-    long long * p2 = source;
-    long long * end = source + size;
-    
-    for (; p2 != end; ++p1, ++p2)
+    long long *p1 = dest;
+    long long *p2 = source;
+    long long *end = &source[size];
+
+    for (; p2 < end; ++p1, ++p2)
       *p1 = *p2;
   }
 }
 
 // String ===
 
-void initializeString(String * string, long long size, char * chars) {
-  string->size = size;
-  string->chars = chars;
+void newString(String *result, long long size, char *chars) {
+  result->size = size;
+  result->chars = chars;
 }
 
-long long String_size_(String * string) {
-  return string->size;
+long long String_size_String_(String *this) {
+  return this->size;
 }
 
-char String_apply_Int(String * string, long long index) {
-  if (0 <= index && index < string->size)
-    return string->chars[index];
+char String_apply_String_Int(String *this, long long index) {
+  if (0 <= index && index < this->size) {
+    return this->chars[index];
+  }
+  else {
+    printf("String index %lld out of bounds.\n", index);
+    exit(1);
+  }
+  return 0;
+}
 
-  return '\0';
+void String_reverse_String_(String *result, String *this) {
+  long long size = this->size;
+  long long nrOfChars = size + 1;
+  char *source = this->chars;
+  char *dest = malloc(nrOfChars * sizeof(char));
+
+  char *p1 = dest;
+  char *p2 = &source[size - 1];
+
+  for (; source <= p2; ++p1, --p2)
+    *p1 = *p2;
+
+  dest[size] = '\0';
+
+  result->size = size;
+  result->chars = dest;
 }
 
 // IntArray ===
 
-void initializeIntArray(IntArray * array, long long size) {
-  array->size = size;
-  array->capacity = capacityFor(size);
-  array->ints = newArray(array->capacity);
+void IntArrayCompanion_apply_IntArrayCompanion_Int(IntArray *result, int companion, long long size) {
+  result->size = size;
+  result->capacity = capacityFor(size);
+  result->ints = newArray(result->capacity);
 }
 
-long long IntArray_size_(IntArray * array) {
-  return array->size;
+long long IntArray_size_IntArray_(IntArray *this) {
+  return this->size;
 }
 
-long long IntArray_capacity_(IntArray * array) {
-  return array->capacity;
+long long IntArray_capacity_IntArray_(IntArray *this) {
+  return this->capacity;
 }
 
-long long IntArray_apply_Int(IntArray * array, long long index) {
-  if (0 <= index && index < array->size)
-    return array->ints[index];
-  
+long long IntArray_apply_IntArray_Int(IntArray *this, long long index) {
+  if (0 <= index && index < this->size) {
+    return this->ints[index];
+  }
+  else {
+    printf("IntArray index %lld out of bounds.\n", index);
+    exit(1);
+  }
+
   return 0;
 }
 
-void IntArray_update_Int_Int(IntArray * array, long long index, long long elem) {
-  if (0 <= index && index < array->size)
-    array->ints[index] = elem;
+void IntArray_update_IntArray_Int_Int(IntArray *this, long long index, long long elem) {
+  if (0 <= index && index < this->size) {
+    this->ints[index] = elem;
+  }
+  else {
+    printf("IntArray index %lld out of bounds.\n", index);
+    exit(1);
+  }
 }  
 
-void IntArray_resize_Int(IntArray * array, long long size) {
+void IntArray_resize_IntArray_Int(IntArray *this, long long size) {
   long long capacity = capacityFor(size);
 
-  if (array->capacity != capacity) {
-    long long * ints = newArray(capacity);
-    copy(ints, array->ints, size);
+  if (this->capacity != capacity) {
+    long long oldCapacity = this->capacity;
 
-    free(array->ints);
+    this->size = size;
+    this->capacity = capacity;
+    this->ints = realloc(this->ints, capacity * sizeof(long long));
 
-    array->size = size;
-    array->capacity = capacity;
-    array->ints = ints;
+    long long *p = &this->ints[oldCapacity];
+    long long *end = &this->ints[capacity];
+
+    for (; p < end; ++p)
+      *p = 0;
   }
 }
 
-void IntArray_$plus$equal_Int(IntArray * array, long long elem) {
-  long long size = array->size + 1;
+void IntArray_$plus$equal_IntArray_Int(IntArray *this, long long elem) {
+  long long size = this->size + 1;
 
-  if (array->capacity < size)
-    IntArray_resize_Int(array, size);
+  if (this->capacity < size)
+    IntArray_resize_IntArray_Int(this, size);
   else
-    array->size = size;
+    this->size = size;
 
-  array->ints[size - 1] = elem;
+  this->ints[size - 1] = elem;
 }
 
-void IntArray_$plus$plus$equal_IntArray(IntArray * array, IntArray * elems) {
-  long long arraySize = array->size;
+void IntArray_$plus$plus$equal_IntArray_IntArray(IntArray *this, IntArray *elems) {
+  long long arraySize = this->size;
   long long elemsSize = elems->size;
-  long long * elemsInts = elems->ints;
+  long long *elemsInts = elems->ints;
   long long size = arraySize + elemsSize;
 
-  if (array->capacity < size)
-    IntArray_resize_Int(array, size);
+  if (this->capacity < size)
+    IntArray_resize_IntArray_Int(this, size);
   else
-    array->size = size;
+    this->size = size;
 
-  copy(array->ints + arraySize, elems->ints, elemsSize);
+  copyInts(this->ints + arraySize, elems->ints, elemsSize);
 }
 
-void IntArray_clear(IntArray * array) {
-  free(array->ints);
-  
-  array->size = 0;
-  array->capacity = 0;
-  array->ints = NULL;
+void IntArray_clear_IntArray(IntArray *this) {
+  IntArray_resize_IntArray_Int(this, 0);
+}
+
+int main() {
+  return 0;
 }

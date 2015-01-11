@@ -20,7 +20,9 @@ case class SingleType[A <: llvm.Type](name: String, toLlvm: A) extends Type
 
 case class StructureType(name: String) extends Type {
 
-  def toLlvm = llvm.Type.Structure()
+  val alias = llvm.Type.NamedType(s".$name")
+
+  def toLlvm = alias.pointer
 
 }
 
@@ -62,7 +64,7 @@ trait Types {
   }
 
   def types_define(aType: Type, defn0: Def) = {
-    debug(s"Defining: $aType.${defn0.signature}.")
+    debug(s"Defining: $aType.${defn0.signature}: ${defn0.resultType}.")
 
     val defn = nativeDefFor(aType, defn0.signature) match {
       case Some(defn) => defn
