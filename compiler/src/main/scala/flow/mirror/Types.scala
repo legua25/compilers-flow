@@ -2,6 +2,7 @@ package flow.mirror
 
 import scala.collection.mutable
 import flow.error
+import flow.debug
 
 sealed trait Type {
 
@@ -49,17 +50,19 @@ trait Types {
   }
 
   def types_declare(aType: Type) = {
-    //    println(s"declaring: $aType")
+    debug(s"Declaring: $aType.")
 
     if (typeDefs.contains(aType))
       error(s"Type $aType is already declared.")
 
     types(aType.name) = aType
     typeDefs(aType) = TypeDef(aType)
+
+    aType
   }
 
   def types_define(aType: Type, defn0: Def) = {
-    println(s"defining: $aType.${defn0.signature}")
+    debug(s"Defining: $aType.${defn0.signature}.")
 
     val defn = nativeDefFor(aType, defn0.signature) match {
       case Some(defn) => defn
@@ -94,21 +97,14 @@ trait Types {
     }
   }
 
-  def defFor(aType: Type, name: String, argTypes: Option[Seq[Type]] = None) = {
+  def defFor(aType: Type, name: String, argTypes: Option[Seq[Type]]): Option[Def] = {
     val typeDef = typeDefOf(aType)
     val signature = Signature(name, argTypes)
 
-    typeDef.defs.get(signature) match {
-      case Some(defn) =>
-        defn
-      case None =>
-        argTypes match {
-          case None =>
-            error(s"Type $aType does not define $name.")
-          case Some(types) =>
-            error(s"Type $aType does not define $name${types.mkString("(", ",", ")")}.")
-        }
-    }
+    typeDef.defs.get(signature)
   }
+
+  def defFor(aType: Type, name: String): Option[Def] =
+    defFor(aType, name, None)
 
 }

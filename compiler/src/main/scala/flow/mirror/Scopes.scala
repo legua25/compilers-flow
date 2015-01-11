@@ -18,11 +18,11 @@ trait Scopes {
     result
   }
 
-  def defFor(name: String): Def =
-    scope.defFor(Signature(name, None))
+  def defFor(name: String, parameterTypes: Option[Seq[Type]]): Option[Def] =
+    scope.find(Signature(name, parameterTypes)).map(_._1)
 
-  def defFor(name: String, parameterTypes: Option[Seq[Type]]): Def =
-    scope.defFor(Signature(name, parameterTypes))
+  def defFor(name: String): Option[Def] =
+    defFor(name, None)
 
   class Scopes {
 
@@ -54,11 +54,6 @@ trait Scopes {
           case None    => find(signature, scopes.tail)
         }
       }
-    }
-
-    def defFor(signature: Signature): Def = find(signature) match {
-      case Some((defn, _)) => defn
-      case None            => error(s"$signature is not defined.")
     }
 
     def put(defn: Def) = {

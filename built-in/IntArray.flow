@@ -1,0 +1,24 @@
+/**
+ * Array of Ints
+ */
+type IntArray = {
+
+  external static def apply(size: Int): IntArray
+
+  external def size: Int
+
+  external def capacity: Int
+
+  external def apply(index: Int): Int
+
+  external def update(index: Int, elem: Int): Unit
+
+  external def resize(size: Int): Unit
+
+  external def +=(elem: Int): Unit
+
+  external def ++=(elems: IntArray): Unit
+
+  external def clear(): Unit
+
+}

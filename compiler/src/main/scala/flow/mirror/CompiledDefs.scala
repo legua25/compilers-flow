@@ -6,6 +6,17 @@ import flow.BlockCodegen
 trait CompiledDefs {
   self: GlobalCodegen with BlockCodegen =>
 
+  case class ConstantDef(
+    name: String,
+    aType: Type,
+    constant: llvm.Constant) extends VarDef {
+
+    def isMutable = false
+
+    def compile(arguments: Seq[llvm.Operand]) =
+      constant
+  }
+
   case class LocalVarDef(
     name: String,
     aType: Type,

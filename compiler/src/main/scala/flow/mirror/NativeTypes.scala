@@ -98,6 +98,8 @@ trait NativeTypes {
         case Seq(a, b) => instruction(Bool.toLlvm, ICmp(IP.UGE, a, b))
       })),
 
+    TypeDef(String),
+
     TypeDef(
       Int,
       NativeFunDef("==", Some(Seq(Int)), Bool, {
@@ -173,7 +175,9 @@ trait NativeTypes {
         case Seq(a) => instruction(Int.toLlvm, FPToSI(a, Int.toLlvm))
       })),
 
-    TypeDef(Unit))
+    TypeDef(Unit),
+
+    TypeDef(String))
     .map(td => td.aType -> td)
     .toMap
 

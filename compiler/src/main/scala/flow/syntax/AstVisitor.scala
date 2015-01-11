@@ -96,7 +96,7 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
 
   override def visitVariableDefinition(context: VariableDefinitionContext) = {
     val name = context.ID.getText()
-    val typeAnn = context.typeAnn.ID.getText()
+    val typeAnn = Option(context.typeAnn).map(_.ID.getText())
     val expr = visitExpression(context.expression)
     val isMutable = context.kw.getText() == "var"
 
@@ -155,19 +155,11 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
     Selection(where, what)
   }
 
-  override def visitIdAssignment(context: IdAssignmentContext) = {
-    val id = Id(context.ID.getText())
-    val expr = visitExpression(context.expression)
+  override def visitAssignment(context: AssignmentContext) = {
+    val expr0 = visitExpression(context.expression(0))
+    val expr1 = visitExpression(context.expression(1))
 
-    Assignment(id, expr)
-  }
-
-  override def visitSelectionAssignment(context: SelectionAssignmentContext) = {
-    val where = visitExpression(context.expression(0))
-    val what = context.ID.getText
-    val expr = visitExpression(context.expression(1))
-
-    Assignment(Selection(where, what), expr)
+    Assignment(expr0, expr1)
   }
 
   override def visitBool(context: BoolContext) =
@@ -182,8 +174,10 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
       CharLiteral(literal(1))
   }
 
-  override def visitString(context: StringContext) =
-    StringLiteral(context.STRING.getText())
+  override def visitString(context: StringContext) = {
+    val literal = context.STRING.getText()
+    StringLiteral(literal.substring(1, literal.size - 1))
+  }
 
   override def visitDecimal(context: DecimalContext) =
     IntLiteral(BigInt(context.DECIMAL.getText()))

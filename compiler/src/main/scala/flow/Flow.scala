@@ -4,14 +4,13 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.PrintWriter
-
 import scala.sys.process._
-
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
-
 import flow.{ syntax => ast }
 import flow.utils._
+import org.antlr.v4.runtime.tree.gui.TreeViewer
+import java.util.Arrays
 
 object Flow extends Compiler {
 
@@ -22,7 +21,9 @@ object Flow extends Compiler {
 
   case class Config(
     run: Boolean = false,
-    verbose: Boolean = true,
+    verbose: Boolean = false,
+    debug: Boolean = false,
+    tree: Boolean = false,
     outputFile: Option[File] = None,
     inputFile: File = null)
 
@@ -33,6 +34,12 @@ object Flow extends Compiler {
       .text("run complied program")
     opt[Unit]('v', "verbose")
       .action { (_, c) => c.copy(verbose = true) }
+    opt[Unit]('d', "debug")
+      .action { (_, c) => c.copy(debug = true) }
+      .text("print debug messages")
+    opt[Unit]('t', "tree")
+      .action { (_, c) => c.copy(tree = true) }
+      .text("show parse tree")
     opt[File]("output")
       .action { (f, c) => c.copy(outputFile = Some(f)) }
     arg[File]("source")
@@ -48,11 +55,13 @@ object Flow extends Compiler {
 
   def main(args: Array[String]): Unit = {
     argumentParser.parse(args, Config()) match {
-      case Some(Config(run, verbose, outputFileOpt, inputFile)) =>
+      case Some(Config(run, verbose, debug, tree, outputFileOpt, inputFile)) =>
+        flow.debugMode = debug
+
         val outputFile = outputFileOpt.getOrElse(inputFile.withExtension(".ll"))
 
         val libraries = libraryFiles.map(f => programFrom(f, verbose))
-        val program = programFrom(inputFile, verbose)
+        val program = programFrom(inputFile, verbose, tree)
 
         if (verbose)
           println(s"Compiling ${inputFile.name}.")
@@ -66,7 +75,7 @@ object Flow extends Compiler {
     }
   }
 
-  def programFrom(file: File, verbose: Boolean = false) = {
+  def programFrom(file: File, verbose: Boolean, showTree: Boolean = false) = {
     val input = new FileInputStream(file)
 
     if (verbose)
@@ -77,6 +86,9 @@ object Flow extends Compiler {
     val tokens = new CommonTokenStream(lexer)
     val parser = new ast.FlowParser(tokens)
     val tree = parser.program()
+
+    if (showTree)
+      new TreeViewer(Arrays.asList(parser.getRuleNames(): _*), tree).open()
 
     val program = new ast.AstVisitor().visit(tree).asInstanceOf[ast.Program]
 
