@@ -1,0 +1,8 @@
+val s = "hello world"
+printLine(s)
+printLine(s.reverse)
+
+printLine("hello " + "world")
+
+printLine("This string contains a sentence.".substring(5))
+printLine("This string contains a sentence.".substring(5, 11))

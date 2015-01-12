@@ -1,0 +1,49 @@
+var a: Int = 0
+a = 1
+printLine(a)
+
+val b = { a + 1 }
+printLine(b)
+// b = 0                                       // does not compile
+
+if true then {
+  printLine(3)
+}
+else {
+  printLine(47)
+}
+
+if true then printLine(4)
+
+if false then printLine(47)
+else printLine(5)
+
+val c: Int = 6
+
+if c == 3 then
+  printLine(3)
+else if c == 4 then
+  printLine(4)
+else if c == 5 then
+  printLine(5)
+else if c == 6 then
+  printLine(6)
+else
+  printLine(47)
+
+var d: Int = if true then 7 else 47
+printLine(d)
+
+while d < 10 do {
+  d = d + 1
+  printLine(d)
+}
+
+while false do printLine(42)
+
+def e(a: Int): Unit = {
+  printLine(a)
+  printLine(a + 1)
+}
+
+e(5.+(6))

@@ -1,0 +1,40 @@
+val array = IntArray(10)
+
+printLine(array.size)
+printLine(array.capacity)
+printLine(array(5))
+array(5) = 47
+printLine(array(5))
+array.resize(20)
+array += 42
+printLine(array)
+array.resize(8)
+printLine(array)
+array ++= array
+printLine(array)
+
+array.clear()
+printLine(array)
+
+array += 42
+array += 47
+
+printLine(array)
+
+val another = IntArray()
+
+var i = 0
+while i < 10 do {
+  another += i
+  i += 1
+}
+
+printLine(another)
+
+array ++= another
+
+printLine(array)
+printLine(another)
+
+printLine(another.subsequence(0, 4))
+printLine(another.subsequence(2))

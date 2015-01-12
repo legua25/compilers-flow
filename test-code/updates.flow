@@ -1,0 +1,9 @@
+var a = 42
+
+printLine(a)
+
+a += 5
+
+printLine(a)
+
+a -= 1
