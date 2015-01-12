@@ -78,16 +78,15 @@ object Flow extends Compiler {
           if (run) {
             inputFile match {
               case Some(file) =>
-                s"./optnrun.sh $outputFile < $file".!
+                s"./run.sh $outputFile < $file".!
               case None =>
-                s"./optnrun.sh $outputFile".!
+                s"./run.sh $outputFile".!
             }
           }
         }
         catch {
           case e: CompilerException if !debug =>
             println(e.getMessage())
-            sys.exit(1)
         }
       case None =>
     }

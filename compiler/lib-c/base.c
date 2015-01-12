@@ -296,6 +296,34 @@ void IntArray_$plus$plus$equal_IntArray_IntArray(IntArray *this, IntArray *elems
   copyInts(this->ints + arraySize, elems->ints, elemsSize);
 }
 
+void IntArray_$colon$plus_IntArray_Int(IntArray *result, IntArray *this, long long elem) {
+  long long size = this->size + 1;
+  long long capacity = capacityFor(size);
+  long long *ints = newArray(capacity);
+  
+  copyInts(ints, this->ints, this->size);
+  
+  ints[size - 1] = elem;
+
+  result->size = size;
+  result->capacity = capacity;
+  result->ints = ints;
+}
+
+void IntArray_$plus$colon_IntArray_Int(IntArray *result, IntArray *this, long long elem) {
+  long long size = this->size + 1;
+  long long capacity = capacityFor(size);
+  long long *ints = newArray(capacity);
+  
+  copyInts(&ints[1], this->ints, this->size);
+  
+  ints[0] = elem;
+
+  result->size = size;
+  result->capacity = capacity;
+  result->ints = ints;
+}
+
 void IntArray_clear_IntArray(IntArray *this) {
   IntArray_resize_IntArray_Int(this, 0);
 }

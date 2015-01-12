@@ -38,3 +38,6 @@ printLine(another)
 
 printLine(another.subsequence(0, 4))
 printLine(another.subsequence(2))
+
+printLine(another :+ 10)
+printLine(2 +: 1 +: another)

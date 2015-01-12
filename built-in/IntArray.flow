@@ -22,6 +22,10 @@ type IntArray = {
 
   external def ++=(elems: IntArray): Unit
 
+  external def +:(elem: Int): IntArray
+
+  external def :+(elem: Int): IntArray
+
   def subsequence(from: Int, to: Int): IntArray = {
     val subsequence = IntArray(to - from)
 
