@@ -33,6 +33,30 @@ Programming language for compilers course, strongly inspired by Scala.
   1 +: 2 +: array                        // gets translated to
   array.+:(2).+:(1)
   ```
+* For iteration allowing nesting and guarding
+
+  ```
+  for
+    i <- range0 if condition
+    j <- range1
+  do {
+    printLine(i)
+    printLine(j)
+  }                                      // gets translated to
+
+  var i = range0.start
+  while range0 contains i do {
+    if condition then {
+      var j = range1.start
+      while range1 contains j do {
+        printLine(i)
+        printLine(j)
+      }
+      j += range1.step
+    }
+    i += range0.step
+  }
+  ```
 * Definitions without parameter clause (aka getters).
 
   ```
@@ -49,7 +73,7 @@ Programming language for compilers course, strongly inspired by Scala.
     def get(a: Int, b: Int): Int = ...
   }
   ```
-## Known bugs and limitations
+## Known limitations and bugs
 
 * No prefix operators yet. There are a few global functions to mimic them
   defined in predef.flow e.g. `def -(value: Int): Int = 0 - value`, thus instead
@@ -64,7 +88,6 @@ Programming language for compilers course, strongly inspired by Scala.
   for i <- 0 until array.size do
     array(i) = i
   ```
-
   write:
   ```
   for i <- 0 until array.size do {
@@ -124,7 +147,8 @@ for
   i <- 1 to 10 if i % 2 == 0
   j <- i to 10
 do {
-  printLine(i + "," + j)
+  printLine(i)
+  printLine(j)
 }
 ```
 
