@@ -176,7 +176,7 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
       case "\\\""  => '\\'
       case "\\'"   => '\''
       case "\\\\"  => '\\'
-      case literal => literal(1)
+      case literal => literal(0)
     }
 
     val message = "Parsed character literal " + literal + " => " + char
