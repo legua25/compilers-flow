@@ -1,0 +1,5 @@
+hello ../example-code/hello.flow
+reverz ../example-code/reverz.flow
+primes ../example-code/primes.flow
+graph ../example-code/graph.flow
+sort ../example-code/sort.flow
