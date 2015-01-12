@@ -42,4 +42,13 @@ type Int = {
   def max(that: Int): Int =
     if this > that then this else that
 
+  def until(until: Int): Range =
+    Range(this, until, 1)
+
+  def to(to: Int): Range =
+    Range(this, to, 1, true)
+
+  def isIn(range: Range): Bool =
+    range.contains(this)
+
 }

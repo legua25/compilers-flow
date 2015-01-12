@@ -22,6 +22,8 @@ object NativeTypes {
 
   val IntArray = StructureType("IntArray")
 
+  val Range = StructureType("Range")
+
   def get(name: String): Option[Type] = name match {
     case "Bool"     => Some(Bool)
     case "Char"     => Some(Char)
@@ -30,6 +32,7 @@ object NativeTypes {
     case "Float"    => Some(Float)
     case "Unit"     => Some(Unit)
     case "IntArray" => Some(IntArray)
+    case "Range"    => Some(Range)
     case _          => None
   }
 
@@ -42,6 +45,15 @@ trait NativeTypes {
   // TODO: this shouldn't be this way
   global_define(
     TypeDefinition(
+      String.alias.name,
+      llvm.Type.Structure(
+        Seq(
+          Int.toLlvm,
+          Char.toLlvm.pointer),
+        false)))
+
+  global_define(
+    TypeDefinition(
       IntArray.alias.name,
       llvm.Type.Structure(
         Seq(
@@ -52,11 +64,13 @@ trait NativeTypes {
 
   global_define(
     TypeDefinition(
-      String.alias.name,
+      Range.alias.name,
       llvm.Type.Structure(
         Seq(
           Int.toLlvm,
-          Char.toLlvm.pointer),
+          Int.toLlvm,
+          Int.toLlvm,
+          Bool.toLlvm),
         false)))
 
   def nativeDefFor(aType: Type, signature: Signature): Option[Def] = {
@@ -197,7 +211,9 @@ trait NativeTypes {
 
     TypeDef(Unit),
 
-    TypeDef(String))
+    TypeDef(IntArray),
+
+    TypeDef(Range))
     .map(td => td.aType -> td)
     .toMap
 

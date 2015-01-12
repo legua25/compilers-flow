@@ -72,10 +72,8 @@ def mergeSort(array: IntArray, from: Int, to: Int): IntArray = {
 def mergeSort(array: IntArray): Unit = {
   val result = mergeSort(array, 0, array.size)
 
-  var i = 0
-  while i < array.size do {
+  for i <- 0 until array.size do {
     array(i) = result(i)
-    i += 1
   }
 
   result.clear()
@@ -84,17 +82,13 @@ def mergeSort(array: IntArray): Unit = {
 val n = readInt()
 val array = IntArray(n)
 
-var i = 0
-while i < n do {
+for i <- 0 until n do {
   array(i) = readInt()
-  i += 1
 }
 
 if false then insertionSort(array)
 else mergeSort(array)
 
-i = 0
-while i < n do {
+for i <- 0 until n do {
   printLine(array(i))
-  i += 1
 }

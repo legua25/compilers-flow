@@ -118,6 +118,21 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
     While(condition, body)
   }
 
+  override def visitFor(context: ForContext) = {
+    val generators = context.generators.generator.toList.map(visitGenerator)
+    val expression = visitExpression(context.expression)
+
+    For(generators, expression)
+  }
+
+  override def visitGenerator(context: GeneratorContext) = {
+    val name = context.ID.getText()
+    val expression = visitExpression(context.gen)
+    val guard = Option(context.guard).map(visitExpression)
+
+    Generator(name, expression, guard)
+  }
+
   override def visitBlock(context: BlockContext) =
     Block(context.complexExpression.toList.map(visitComplexExpression).filter(_ != null))
 

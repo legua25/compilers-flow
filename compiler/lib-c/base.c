@@ -3,6 +3,8 @@
 #include <string.h>
 #include <time.h>
 
+typedef char bool;
+
 typedef struct String String;
 struct String {
   long long size;
@@ -14,6 +16,14 @@ struct IntArray {
   long long size;
   long long capacity;
   long long *ints;
+};
+
+typedef struct Range Range;
+struct Range {
+  long long start;
+  long long end;
+  long long step;
+  bool isInclusive;
 };
 
 // predef ===
@@ -45,7 +55,7 @@ long long readInt() {
   return value;
 }
 
-void print_Bool(int value) {
+void print_Bool(bool value) {
   if (value)
     printf("true");
   else
@@ -82,6 +92,10 @@ void print_IntArray(IntArray *array) {
       printf(", %lld", array->ints[i]);
   }
   printf(")");
+}
+
+void print_Range(Range *range) {
+  printf("Range(%lld, %lld, %lld, %s)", range->start, range->end, range->step, range->isInclusive ? "true" : "false");
 }
 
 // Int ===
@@ -326,4 +340,36 @@ void IntArray_$plus$colon_IntArray_Int(IntArray *result, IntArray *this, long lo
 
 void IntArray_clear_IntArray(IntArray *this) {
   IntArray_resize_IntArray_Int(this, 0);
+}
+
+// Range ===
+
+void RangeCompanion_apply_RangeCompanion_Int_Int_Int_Bool(Range *result, int companion, long long start, long long end, long long step, bool isInclusive) {
+  result->start = start;
+  result->end = end;
+  result->step = step;
+  result->isInclusive = isInclusive;
+}
+
+long long Range_start_Range_(Range *this) {
+  return this->start;
+}
+
+long long Range_end_Range_(Range *this) {
+  return this->end;
+}
+
+long long Range_step_Range_(Range *this) {
+  return this->step;
+}
+
+int Range_isInclusive_Range_(Range *this) {
+  return this->isInclusive;
+}
+
+long long Range_by_Range_Int(Range *result, Range *this, long long step) {
+  result->start = this->start;
+  result->end = this->end;
+  result->step = step;
+  result->isInclusive = this->isInclusive;
 }

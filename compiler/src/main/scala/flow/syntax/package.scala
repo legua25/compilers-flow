@@ -26,11 +26,15 @@ package object syntax {
 
   case class Parameter(name: String, typeAnn: String) extends Ast
 
+  case class Generator(name: String, expression: Expression, guard: Option[Expression]) extends Ast
+
   case class VarDef(name: String, typeAnn: Option[String], expr: Expression, isMutable: Boolean) extends Expression with MemberDef
 
   case class If(condition: Expression, thn: Expression, els: Option[Expression]) extends Expression
 
   case class While(condition: Expression, body: Expression) extends Expression
+
+  case class For(generators: Seq[Generator], body: Expression) extends Expression
 
   case class Block(expressions: Seq[Expression]) extends Expression
 

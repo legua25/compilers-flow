@@ -46,6 +46,7 @@ expression
   | IF cond=expression NL? THEN NL? thn=expression
     (NL? ELSE NL? els=expression)?                                              # If
   | WHILE cond=expression NL? DO NL? body=expression                            # While
+  | FOR NL? generators NL? DO NL? expression                                    # For
   | '{' NL* (complexExpression (semi complexExpression)*)? NL* '}'              # Block
   | ID                                                                          # Id
   | expression '.' ID                                                           # Selection
@@ -74,6 +75,14 @@ parameter
 
 arguments
   : expression (',' expression)*
+  ;
+
+generators
+  : generator (semi generator)*
+  ;
+
+generator
+  : ID '<-' gen=expression (IF guard=expression)?
   ;
 
 literal
@@ -109,6 +118,7 @@ IF       : 'if';
 THEN     : 'then';
 ELSE     : 'else';
 WHILE    : 'while';
+FOR      : 'for';
 DO       : 'do';
 
 BOOL

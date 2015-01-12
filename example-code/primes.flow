@@ -13,9 +13,7 @@ def isPrime(n: Int): Bool =
 
 val n = readInt()
 
-var i = 2
-while i <= n do {
+for i <- 2 to n do {
   if isPrime(i) then
     printLine(i)
-  i += 1
 }

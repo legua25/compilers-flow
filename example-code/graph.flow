@@ -59,33 +59,25 @@ def union(components: IntArray, a: Int, b: Int): Bool = {
 
 val n = readInt()
 val m = readInt()
-var i = 0
 
 val components = IntArray(n)
 
-i = 0
-while i < n do {
+for i <- 0 until n do {
   components(i) = 0 - 1
-  i += 1
 }
 
-i = 0
-while i < m do {
+for i <- 0 until m do {
   val a = readInt()
   val b = readInt()
 
   union(components, a, b)
-
-  i += 1
 }
 
 var nrOfComponents = 0
 
-i = 0
-while i < n do {
+for i <- 0 until n do {
   if components(i) < 0 then
     nrOfComponents += 1
-  i += 1
 }
 
 if nrOfComponents == 1 then

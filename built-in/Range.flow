@@ -1,0 +1,39 @@
+/**
+ * Integer range type
+ */
+type Range = {
+
+  external static def apply(start: Int, end: Int, step: Int, isInclusive: Bool): Range
+
+  static def apply(start: Int, end: Int, step: Int): Range =
+    Range(start, end, step, false)
+
+  external def start: Int
+
+  external def end: Int
+
+  external def step: Int
+
+  external def isInclusive: Bool
+
+  def contains(value: Int): Bool = {
+    if value == this.end && (this.isInclusive).not then {
+      false
+    }
+    else if this.step > 0 then {
+      if value < this.start || value > this.end then
+        false
+      else
+        (this.step == 1) || (((value - this.start) % this.step) == 0)
+    }
+    else {
+      if value < this.end || value > this.start then
+        false
+      else
+        (this.step == -(1)) || (((value - this.start) % this.step) == 0)
+    }
+  }
+
+  external def by(step: Int): Range
+
+}

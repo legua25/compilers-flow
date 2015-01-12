@@ -87,6 +87,7 @@ object Flow extends Compiler {
         catch {
           case e: CompilerException if !debug =>
             println(e.getMessage())
+            sys.exit(1)
         }
       case None =>
     }

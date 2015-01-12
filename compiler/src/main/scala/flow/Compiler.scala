@@ -5,6 +5,8 @@ import flow.mirror.NativeTypes._
 import flow.{ syntax => syn }
 import flow.syntax.OperatorPrecedence
 import flow.syntax.OperatorPrecedence
+import java.lang.Boolean
+import llvm.GlobalReference
 
 trait Compiler
   extends GlobalCodegen
@@ -34,11 +36,14 @@ trait Compiler
 
     // compilation ===
 
-    defineTypes(typeDefs)
-    defineGlobals(libraryGlobals)
+    val typeDecls = declareTypes(typeDefs)
+    val globalDecls = declareGlobals(libraryGlobals)
+
+    defineTypes(typeDecls)
+    defineGlobals(globalDecls)
 
     scoped {
-      defineGlobals(programGlobals)
+      defineGlobals(declareGlobals(programGlobals))
 
       scoped {
         setBlock(newBlock("entry"))
@@ -83,12 +88,7 @@ trait Compiler
           if (actualType != declaredType)
             error(s"Declared type $declaredType does not match actual type $actualType.")
 
-        val reference = alloca(actualType.toLlvm)
-        val defn = LocalVarDef(name, actualType, isMutable, reference)
-
-        scope.put(defn)
-        assign(defn, e)
-
+        compileVarDef(name, e, isMutable)
         (unit, Unit)
 
       case syn.If(condition, thn, els) =>
@@ -161,6 +161,29 @@ trait Compiler
 
         (unit, Unit)
 
+      case syn.For(generators, body) =>
+        if (generators.isEmpty) {
+          compile(body)
+        }
+        else scoped {
+          // TODO: dirty dirty hacks
+          val range = "$range"
+          val syn.Generator(name, expr, guard) = generators.head
+          compile(syn.VarDef(range, None, expr, false))
+          compile(syn.VarDef(name, None, syn.Selection(syn.Id(range), "start"), true))
+
+          val whileCond = syn.InfixExpression(syn.Id(range), "contains", syn.Id(name))
+          val increment = syn.InfixExpression(syn.Id(name), "+=", syn.Selection(syn.Id(range), "step"))
+          val nextFor = syn.For(generators.tail, body)
+          val nextForGuarded = guard map {
+            guard =>
+              syn.If(guard, nextFor, None)
+          } getOrElse nextFor
+          val whileBody = syn.Block(Seq(nextForGuarded, increment))
+
+          compile(syn.While(whileCond, whileBody))
+        }
+
       case syn.Block(expressions) =>
         scoped {
           expressions.foldLeft((unit: llvm.Operand, Unit: Type)) {
@@ -194,20 +217,20 @@ trait Compiler
         defFor(name, Some(argTypes)) match {
           case Some(defn) => compile(defn, args)
           case None =>
-            compileApplication(compile(id), "apply", compiledArguments)
+            compileApplication(compile(id), "apply", Some(compiledArguments))
         }
 
       case syn.Application(syn.Selection(id: syn.Id, name), arguments) =>
         val compiledArguments = arguments.map(compile)
-        compileApplication(compile(id), name, compiledArguments, Some(id))
+        compileApplication(compile(id), name, Some(compiledArguments), Some(id))
 
       case syn.Application(syn.Selection(expr, name), arguments) =>
         val compiledArguments = arguments.map(compile)
-        compileApplication(compile(expr), name, compiledArguments)
+        compileApplication(compile(expr), name, Some(compiledArguments))
 
       case syn.Application(expr, arguments) =>
         val compiledArguments = arguments.map(compile)
-        compileApplication(compile(expr), "apply", compiledArguments)
+        compileApplication(compile(expr), "apply", Some(compiledArguments))
 
       case syn.Assignment(syn.Id(name), argument) =>
         val compiledArgument = compile(argument)
@@ -226,7 +249,7 @@ trait Compiler
         val obj = compile(expr0)
         val sub = compile(expr1)
         val compiledArguments = arguments.map(compile)
-        compileApplication(obj, "update", compiledArguments :+ sub)
+        compileApplication(obj, "update", Some(compiledArguments :+ sub))
 
       case syn.Assignment(_, _) =>
         error(s"$expression is not valid.")
@@ -248,20 +271,33 @@ trait Compiler
     }
   }
 
+  def compileVarDef(name: String, compiledExpr: CompiledExpression, isMutable: Boolean) = {
+    val e @ (value, aType) = compiledExpr
+    val reference = alloca(aType.toLlvm)
+    val defn = LocalVarDef(name, aType, isMutable, reference)
+
+    scope.put(defn)
+    assign(defn, e)
+
+    defn
+  }
+
   def compileApplication(
     compiledExpr: CompiledExpression,
     name: String,
-    compiledArguments: Seq[CompiledExpression],
+    compiledArguments: Option[Seq[CompiledExpression]],
     assignTo: Option[syn.Id] = None): CompiledExpression = {
 
     val (obj, aType) = compiledExpr
-    val (args, argTypes) = compiledArguments.unzip
+    val unzipped = compiledArguments.map(_.unzip)
+    val args = unzipped.map(_._1)
+    val argTypes = unzipped.map(_._2)
 
     debug(s"Compiling Application ($aType, $name, $argTypes, $assignTo)")
 
-    defFor(aType, name, Some(argTypes)) match {
+    defFor(aType, name, argTypes) match {
       case Some(defn) =>
-        compile(defn, obj +: args)
+        compile(defn, obj +: args.getOrElse(Seq()))
       case None if name.endsWith("=") &&
         assignTo.isDefined =>
         val Some(syn.Id(lval)) = assignTo
@@ -271,7 +307,8 @@ trait Compiler
           compiledArguments)
         compileAssignment(lval, compiledArgument)
       case None =>
-        error(s"Type $aType does not define $name${argTypes.mkString("(", ",", ")")}.")
+        val argClause = argTypes.map(_.mkString("(", ",", ")")).getOrElse("")
+        error(s"Type $aType does not define $name$argClause.")
     }
   }
 
@@ -294,33 +331,34 @@ trait Compiler
     }
   }
 
-  def defineTypes(typeDefs: Seq[syn.TypeDef]): Unit = {
+  type TypeDeclaration = (Type, Seq[(Declaration, syn.MemberDef)])
+  def declareTypes(typeDefs: Seq[syn.TypeDef]) = {
     for (typeDef <- typeDefs) {
       val aType = types_declare(typeDef.name)
       val companionType = types_declare(aType.companion)
       scope.put(ConstantDef(aType.name, companionType, unit))
     }
 
-    val decls =
-      for (typeDef <- typeDefs) yield {
-        val aType = typeFor(typeDef.name)
+    for (typeDef <- typeDefs) yield {
+      val aType = typeFor(typeDef.name)
 
-        scoped {
-          // TODO: `this`
+      scoped {
+        // TODO: `this`
 
-          val decls =
-            for (synDefn <- typeDef.defs) yield {
-              (declare(aType, synDefn), synDefn)
-            }
+        val decls =
+          for (synDefn <- typeDef.defs) yield {
+            (declare(aType, synDefn), synDefn)
+          }
 
-          (aType, decls)
-        }
+        (aType, decls)
       }
+    }
+  }
 
+  def defineTypes(decls: Seq[TypeDeclaration]) = {
     for ((aType, decls) <- decls)
       for ((decl, defn) <- decls)
         define(aType, decl, defn)
-
   }
 
   def globalDef(
@@ -372,14 +410,16 @@ trait Compiler
     case syn.StaticVarDef(defn)                     => ???
   }
 
-  def defineGlobals(globals: Seq[syn.Def]) = {
-    val decls =
-      for (synDefn <- globals) yield {
-        val (defn, ref, parameters, resultType) = declare(synDefn)
-        scope.put(defn)
-        (defn, ref, parameters, resultType, synDefn.body)
-      }
+  type GlobalDeclaration = (Def, GlobalReference, Option[Seq[Parameter]], Type, Option[syn.Expression])
+  def declareGlobals(globals: Seq[syn.Def]) = {
+    for (synDefn <- globals) yield {
+      val (defn, ref, parameters, resultType) = declare(synDefn)
+      scope.put(defn)
+      (defn, ref, parameters, resultType, synDefn.body)
+    }
+  }
 
+  def defineGlobals(decls: Seq[GlobalDeclaration]) = {
     for ((defn, ref, parameters, resultType, body) <- decls)
       define(defn, ref, parameters, resultType, body)
   }

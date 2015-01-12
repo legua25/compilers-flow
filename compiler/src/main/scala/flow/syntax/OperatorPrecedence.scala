@@ -8,18 +8,26 @@ trait OperatorPrecedence {
 
   case object Right extends Associativity
 
+  def isAssignment(operator: String) = operator match {
+    case "!=" => false
+    case "<=" => false
+    case ">=" => false
+    case _ =>
+      operator.last == '=' && operator.head != '='
+  }
+
   def precedenceOf(operator: String) = operator.head match {
-    case c if c != '=' && operator.last == '=' => 0
-    case c if c.isLetter                       => 1
-    case '|'                                   => 2
-    case '^'                                   => 3
-    case '&'                                   => 4
-    case '<' | '>'                             => 5
-    case '=' | '!'                             => 6
-    case ':'                                   => 7
-    case '+' | '-'                             => 8
-    case '*' | '/' | '%'                       => 9
-    case _                                     => 10
+    case _ if isAssignment(operator) => 0
+    case c if c.isLetter             => 1
+    case '|'                         => 2
+    case '^'                         => 3
+    case '&'                         => 4
+    case '<' | '>'                   => 5
+    case '=' | '!'                   => 6
+    case ':'                         => 7
+    case '+' | '-'                   => 8
+    case '*' | '/' | '%'             => 9
+    case _                           => 10
   }
 
   def associativityOf(operator: String): Associativity = operator.last match {

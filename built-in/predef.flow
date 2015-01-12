@@ -2,6 +2,16 @@
  * Predefined functions
  */
 
+// some more hacks
+def -(value: Int): Int =
+  0 - value
+
+def -(value: Float): Float =
+  0.0 - value
+
+def !(value: Bool): Bool =
+  value.not
+
 external def readLine(): String
 
 external def readInt(): Int
@@ -19,6 +29,13 @@ def printLine(a: Bool): Unit = {
 external def print(a: Char): Unit
 
 def printLine(a: Char): Unit = {
+  print(a)
+  printLine()
+}
+
+external def print(a: String): Unit
+
+def printLine(a: String): Unit = {
   print(a)
   printLine()
 }
@@ -51,9 +68,9 @@ def printLine(a: IntArray): Unit = {
   printLine()
 }
 
-external def print(a: String): Unit
+external def print(a: Range): Unit
 
-def printLine(a: String): Unit = {
+def printLine(a: Range): Unit = {
   print(a)
   printLine()
 }
