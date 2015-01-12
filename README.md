@@ -80,6 +80,18 @@ Programming language for compilers course, strongly inspired by Scala.
   of `-5` write `-(5)`.
 * No instances for custom types. Currently only type instances are created from
   built-in types.
+* Since `if` is an expression and there is no type hierarchy both branches must
+  evaluate to the same type. Missing `else` branch evaluates to `Unit`,
+  therefore expression used as statement needs to be followed by `Unit`
+  expression `{}`. This also discourages from using expressions in place
+  of statements.
+
+  ```
+  if true then 42 else 47.0              // incorrect
+  if true then 42 else 47                // correct
+  if true then 42                        // incorrect
+  if true then { 42; {} }                // correct
+  ```
 * There is a bug in grammar / parser causing `while` / `for` with just
   assignment as body to parse incorrectly, use braces to prevent it.
 
