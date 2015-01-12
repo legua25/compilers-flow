@@ -49,6 +49,28 @@ Programming language for compilers course, strongly inspired by Scala.
     def get(a: Int, b: Int): Int = ...
   }
   ```
+## Known bugs and limitations
+
+* No prefix operators yet. There are a few global functions to mimic them
+  defined in predef.flow e.g. `def -(value: Int): Int = 0 - value`, thus instead
+  of `-5` write `-(5)`.
+* No instances for custom types. Currently only type instances are created from
+  built-in types.
+* There is a bug in grammar / parser causing `while` / `for` with just
+  assignment as body to parse incorrectly, use braces to prevent it.
+
+  instead of:
+  ```
+  for i <- 0 until array.size do
+    array(i) = i
+  ```
+
+  write:
+  ```
+  for i <- 0 until array.size do {
+    array(i) = i
+  }
+  ```
 
 # Specification
 
@@ -87,20 +109,20 @@ while cond do {
 }
 ```
 
-#### for iteration *
+#### for iteration
 
 ```
-for element <= iterable do {
+for index <- range do {
   ...
 }
 ```
 
-##### nested iteration *
+##### nested iteration
 
 ```
 for
-  i <= 1 to 10
-  j <= i to 10
+  i <- 1 to 10 if i % 2 == 0
+  j <- i to 10
 do {
   printLine(i + "," + j)
 }
