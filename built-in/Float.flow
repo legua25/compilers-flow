@@ -15,8 +15,6 @@ type Float = {
 
   external def >=(that: Float): Bool
 
-  external def printLine(): Unit
-
   external def +(that: Float): Float
 
   external def -(that: Float): Float
