@@ -26,26 +26,32 @@ trait Compiler
 
     val typeDefs = statements collect { case td: syn.TypeDef => td }
 
-    val globals = statements collect { case d: syn.Def => d }
+    val libraryGlobals = libraries flatMap { _.statements collect { case d: syn.Def => d } }
+
+    val programGlobals = program.statements collect { case d: syn.Def => d }
 
     val expressions = program.statements collect { case e: syn.Expression => e }
 
     // compilation ===
 
     defineTypes(typeDefs)
-    defineGlobals(globals)
+    defineGlobals(libraryGlobals)
 
     scoped {
-      setBlock(newBlock("entry"))
-      expressions.foreach(compile)
-      ret(llvm.Constant.Int(llvm.Type.Int(32), "0"))
-    }
+      defineGlobals(programGlobals)
 
-    global_defineInternal(
-      llvm.Function(
-        returnType = llvm.Type.Int(32),
-        name = "main",
-        basicBlocks = makeBasicBlocks()))
+      scoped {
+        setBlock(newBlock("entry"))
+        expressions.foreach(compile)
+        ret(llvm.Constant.Int(llvm.Type.Int(32), "0"))
+      }
+
+      global_defineInternal(
+        llvm.Function(
+          returnType = llvm.Type.Int(32),
+          name = "main",
+          basicBlocks = makeBasicBlocks()))
+    }
 
     module(moduleName)
   }
@@ -223,7 +229,7 @@ trait Compiler
         compileApplication(obj, "update", compiledArguments :+ sub)
 
       case syn.Assignment(_, _) =>
-        error(s"$expression is not valid assignment.")
+        error(s"$expression is not valid.")
 
       case syn.BoolLiteral(value)   => (constantBool(value), Bool)
 
@@ -295,22 +301,25 @@ trait Compiler
       scope.put(ConstantDef(aType.name, companionType, unit))
     }
 
-    for (typeDef <- typeDefs) {
-      val aType = typeFor(typeDef.name)
+    val decls =
+      for (typeDef <- typeDefs) yield {
+        val aType = typeFor(typeDef.name)
 
-      scoped {
-        // TODO: `this`
+        scoped {
+          // TODO: `this`
 
-        val decls =
-          for (synDefn <- typeDef.defs) yield {
-            declare(aType, synDefn)
-          }
+          val decls =
+            for (synDefn <- typeDef.defs) yield {
+              (declare(aType, synDefn), synDefn)
+            }
 
-        for ((synDefn, decl) <- typeDef.defs.zip(decls)) {
-          define(aType, synDefn, decl)
+          (aType, decls)
         }
       }
-    }
+
+    for ((aType, decls) <- decls)
+      for ((decl, defn) <- decls)
+        define(aType, decl, defn)
 
   }
 
@@ -353,12 +362,12 @@ trait Compiler
     case syn.StaticVarDef(defn)                     => ???
   }
 
-  def define(aType: Type, defn: syn.MemberDef, decl: Declaration): Unit = defn match {
+  def define(aType: Type, decl: Declaration, defn: syn.MemberDef): Unit = defn match {
     case syn.Def(name, parameters, typeAnn, body) =>
       val (defn, ref, parameters, resultType) = decl
       define(defn, ref, parameters, resultType, body)
     case syn.StaticDef(defn) =>
-      define(aType.companion, defn, decl)
+      define(aType.companion, decl, defn)
     case syn.VarDef(name, typeAnn, expr, isMutable) => ???
     case syn.StaticVarDef(defn)                     => ???
   }

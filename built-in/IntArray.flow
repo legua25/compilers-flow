@@ -22,6 +22,26 @@ type IntArray = {
 
   external def ++=(elems: IntArray): Unit
 
+  def subsequence(from: Int, to: Int): IntArray = {
+    val subsequence = IntArray(to - from)
+
+    var i = 0
+    var j = from
+    while j < to do {
+      subsequence(i) = this(j)
+      i += 1
+      j += 1
+    }
+
+    subsequence
+  }
+
+  def subsequence(from: Int): IntArray =
+    this.subsequence(from, this.size)
+
+  def copy: IntArray =
+    this.subsequence(0)
+
   external def clear(): Unit
 
 }

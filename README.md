@@ -4,6 +4,8 @@ Programming language for compilers course, strongly inspired by Scala.
 
 # Specification
 
+(* feature is not implemented yet)
+
 ## Variable declaration
 
 ```
@@ -37,7 +39,7 @@ while cond do {
 }
 ```
 
-#### for iteration
+#### for iteration *
 
 ```
 for element <= iterable do {
@@ -45,7 +47,7 @@ for element <= iterable do {
 }
 ```
 
-##### nested iteration
+##### nested iteration *
 
 ```
 for
@@ -82,7 +84,7 @@ def sayHi(name: String): String =
   "hello " + name
 ```
 
-##### with type inference
+##### with type inference *
 
 ```
 def square(n: Int) =
@@ -100,14 +102,14 @@ val double = (i: Int) => 2 * i
 ### Basic types:
 
 <!-- add algebraic structures into type system like Numeric (Group / Monoid ... ?) -->
-`Unit`, `Bool`, `Byte`, `Int`, `Float`, `Char`, `String`
+`Bool`, `Char`, `String`, `Int`, `Float`, `Unit`, `IntArray`
 
 <!-- ### Advanced types:
 
 `Long` (infinite precision),
 `Rational[A]` -->
 
-### Collection types:
+### Collection types: *
 
 <!-- tuples `Tuple2[A, B] ...` -->
 tuples `val pair = (42, 47)`,

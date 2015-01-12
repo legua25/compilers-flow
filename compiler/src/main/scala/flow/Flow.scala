@@ -63,19 +63,32 @@ object Flow extends Compiler {
       case Some(Config(run, verbose, debug, tree, outputFileOpt, inputFile, sourceFile)) =>
         flow.debugMode = debug
 
-        val outputFile = outputFileOpt.getOrElse(sourceFile.withExtension(".ll"))
+        try {
+          val outputFile = outputFileOpt.getOrElse(sourceFile.withExtension(".ll"))
 
-        val libraries = libraryFiles.map(f => programFrom(f, verbose))
-        val program = programFrom(sourceFile, verbose, tree)
+          val libraries = libraryFiles.map(f => programFrom(f, verbose))
+          val program = programFrom(sourceFile, verbose, tree)
 
-        if (verbose)
-          println(s"Compiling ${sourceFile.name}.")
+          if (verbose)
+            println(s"Compiling ${sourceFile.name}.")
 
-        val module = compile(sourceFile.name, program, libraries)
-        writeModuleTo(outputFile, module, verbose)
+          val module = compile(sourceFile.name, program, libraries)
+          writeModuleTo(outputFile, module, verbose)
 
-        if (run)
-          s"./optnrun.sh $outputFile < $inputFile".!
+          if (run) {
+            inputFile match {
+              case Some(file) =>
+                s"./optnrun.sh $outputFile < $file".!
+              case None =>
+                s"./optnrun.sh $outputFile".!
+            }
+          }
+        }
+        catch {
+          case e: CompilerException if !debug =>
+            println(e.getMessage())
+            sys.exit(1)
+        }
       case None =>
     }
   }

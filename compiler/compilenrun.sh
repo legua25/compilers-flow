@@ -2,5 +2,5 @@
 
 out="${1%.*}.ll"
 
-./compile.sh $1
+./compile.sh $1 &&
 ./optnrun.sh $out

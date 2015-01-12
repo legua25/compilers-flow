@@ -1,3 +1,3 @@
 #!/bin/bash
 
-java -jar flowc.jar $1
+java -jar flowc.jar $@

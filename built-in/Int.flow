@@ -3,6 +3,15 @@
  */
 type Int = {
 
+  static def maxValue: Int = 9223372036854775807
+
+  static def minValue: Int = 0-9223372036854775808
+
+  static def random(to: Int): Int =
+    Int.random(0, to)
+
+  external static def random(from: Int, to: Int): Int
+
   external def ==(that: Int): Bool
 
   external def !=(that: Int): Bool

@@ -42,6 +42,6 @@ class FileOps(val file: File) extends AnyVal {
     }
   }
 
-  def files = file.listFiles().toList
+  def files = Option(file.listFiles()).map(_.toList).getOrElse(Nil)
 
 }
