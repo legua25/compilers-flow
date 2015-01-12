@@ -1,4 +1,17 @@
-# Usage
+# Prerequisities
+
+* [LLVM](http://llvm.org/)
+* [SBT](http://www.scala-sbt.org/)
+
+# Contents
+
+* **build.sh** - builds compiler
+* **compile.sh in out** - compiles source code in (flow) into intermediate out (llvm)
+* **run.sh in** - runs interpreted intermediate in (llvm)
+* **flowc** - runs flowc.jar
+* **flowc.jar** - runs compiler
+
+# Compiler Usage
 
 ```
 flowc 0.1
