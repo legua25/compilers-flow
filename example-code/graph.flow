@@ -1,0 +1,94 @@
+/**
+ * Finds root of a component containing given $node.
+ */
+def getRoot(components: IntArray, node: Int): Int = {
+  var current = node
+  while components(current) >= 0 do {
+    current = components(current)
+  }
+
+  current
+}
+
+/**
+ * Sets parents of all nodes along path from $child to root to $root.
+ */
+def compact(components: IntArray, child: Int, root: Int): Unit = {
+  var current = child
+  while components(current) >= 0 do {
+    val next = components(current)
+
+    components(current) = root
+
+    current = next
+  }
+
+  components(current) = root
+}
+
+/**
+ * Unions components containing nodes.
+ * Returns true iff components were distinct.
+ */
+def union(components: IntArray, a: Int, b: Int): Bool = {
+  val rootOfA = getRoot(components, a)
+  val rootOfB = getRoot(components, b)
+
+  if rootOfA != rootOfB then {
+    val sizeOfA = 0 - components(rootOfA)
+    val sizeOfB = 0 - components(rootOfB)
+    val size = sizeOfA + sizeOfB
+
+    var child = a
+    var root = rootOfB
+
+    if sizeOfB < sizeOfA then {
+      child = b
+      root = rootOfA
+    }
+
+    components(root) = 0 - size
+    compact(components, child, root)
+
+    true
+  }
+  else {
+    false
+  }
+}
+
+val n = readInt()
+val m = readInt()
+var i = 0
+
+val components = IntArray(n)
+
+i = 0
+while i < n do {
+  components(i) = 0 - 1
+  i += 1
+}
+
+i = 0
+while i < m do {
+  val a = readInt()
+  val b = readInt()
+
+  union(components, a, b)
+
+  i += 1
+}
+
+var nrOfComponents = 0
+
+i = 0
+while i < n do {
+  if components(i) < 0 then
+    nrOfComponents += 1
+  i += 1
+}
+
+if nrOfComponents == 1 then
+  printLine("YES")
+else
+  printLine("NO")

@@ -1,0 +1,100 @@
+def insertionSort(array: IntArray): Unit = {
+  var nrOfSorted = 1
+
+  while nrOfSorted < array.size do {
+    var i = nrOfSorted
+
+    // while i > 0 && array(i - 1) > array(i) do {
+    // doesn't work until && is shortcircuited
+    while if i > 0 then array(i - 1) > array(i) else false do {
+      val tmp: Int = array(i - 1)
+      array(i - 1) = array(i)
+      array(i) = tmp
+
+      i -= 1
+    }
+
+    nrOfSorted += 1
+  }
+}
+
+def mergeSort(array: IntArray, from: Int, to: Int): IntArray = {
+  val size = to - from
+
+  if size <= 1 then {
+    val result = IntArray(1)
+    result(0) = array(from)
+    result
+  }
+  else {
+    val middle = (from + to) / 2
+
+    val fstHalf = mergeSort(array, from, middle)
+    val sndHalf = mergeSort(array, middle, to)
+
+    val result = IntArray(size)
+
+    var i = 0
+    var fi = 0
+    var si = 0
+
+    while fi < fstHalf.size && si < sndHalf.size do {
+      if fstHalf(fi) < sndHalf(si) then {
+        result(i) = fstHalf(fi)
+        fi += 1
+      }
+      else {
+        result(i) = sndHalf(si)
+        si += 1
+      }
+      i += 1
+    }
+
+    while fi < fstHalf.size do {
+      result(i) = fstHalf(fi)
+      fi += 1
+      i += 1
+    }
+
+    while si < sndHalf.size do {
+      result(i) = sndHalf(si)
+      si += 1
+      i += 1
+    }
+
+    fstHalf.clear()
+    sndHalf.clear()
+
+    result
+  }
+}
+
+def mergeSort(array: IntArray): Unit = {
+  val result = mergeSort(array, 0, array.size)
+
+  var i = 0
+  while i < array.size do {
+    array(i) = result(i)
+    i += 1
+  }
+
+  result.clear()
+}
+
+val n = readInt()
+val array = IntArray(n)
+
+var i = 0
+while i < n do {
+  array(i) = readInt()
+  i += 1
+}
+
+if false then insertionSort(array)
+else mergeSort(array)
+
+i = 0
+while i < n do {
+  printLine(array(i))
+  i += 1
+}

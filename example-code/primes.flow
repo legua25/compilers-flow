@@ -1,0 +1,21 @@
+def isPrime(n: Int, d: Int): Bool =
+  if n <= 1 then
+    false
+  else if n == d then
+    true
+  else if n % d == 0 then
+    false
+  else
+    isPrime(n, d + 1)
+
+def isPrime(n: Int): Bool =
+  isPrime(n, 2)
+
+val n = readInt()
+
+var i = 2
+while i <= n do {
+  if isPrime(i) then
+    printLine(i)
+  i += 1
+}
