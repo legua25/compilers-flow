@@ -33,7 +33,7 @@ defnHead
   ;
 
 variableDefinition
-  : kw=(VAR|VAL) ID typeAnn? '=' expression
+  : kw=(VAR|VAL) ID (',' ID)* typeAnn? '=' expression
   ;
 
 complexExpression

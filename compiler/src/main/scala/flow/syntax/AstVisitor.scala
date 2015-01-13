@@ -95,12 +95,12 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
   }
 
   override def visitVariableDefinition(context: VariableDefinitionContext) = {
-    val name = context.ID.getText()
+    val names = context.ID.toList.map(_.getText())
     val typeAnn = Option(context.typeAnn).map(_.ID.getText())
     val expr = visitExpression(context.expression)
     val isMutable = context.kw.getText() == "var"
 
-    VarDef(name, typeAnn, expr, isMutable)
+    VarDef(names, typeAnn, expr, isMutable)
   }
 
   override def visitIf(context: IfContext) = {

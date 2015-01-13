@@ -28,7 +28,7 @@ package object syntax {
 
   case class Generator(name: String, expression: Expression, guard: Option[Expression]) extends Ast
 
-  case class VarDef(name: String, typeAnn: Option[String], expr: Expression, isMutable: Boolean) extends Expression with MemberDef
+  case class VarDef(names: Seq[String], typeAnn: Option[String], expr: Expression, isMutable: Boolean) extends Expression with MemberDef
 
   case class If(condition: Expression, thn: Expression, els: Option[Expression]) extends Expression
 

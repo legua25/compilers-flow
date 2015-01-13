@@ -57,8 +57,7 @@ def union(components: IntArray, a: Int, b: Int): Bool = {
   }
 }
 
-val n = readInt()
-val m = readInt()
+val n, m = readInt()
 
 val components = IntArray(n)
 

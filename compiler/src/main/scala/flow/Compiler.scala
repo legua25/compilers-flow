@@ -80,7 +80,7 @@ trait Compiler
     debug(s"Compiling: $expression.")
 
     expression match {
-      case syn.VarDef(name, typeAnn, expr, isMutable) =>
+      case syn.VarDef(Seq(name), typeAnn, expr, isMutable) =>
 
         val e @ (_, actualType) = compile(expr)
 
@@ -89,6 +89,12 @@ trait Compiler
             error(s"Declared type $declaredType does not match actual type $actualType.")
 
         compileVarDef(name, e, isMutable)
+        (unit, Unit)
+
+      case syn.VarDef(names, typeAnn, expr, isMutable) =>
+        for (name <- names)
+          compile(syn.VarDef(Seq(name), typeAnn, expr, isMutable))
+
         (unit, Unit)
 
       case syn.If(condition, thn, els) =>
@@ -169,8 +175,8 @@ trait Compiler
           // TODO: dirty dirty hacks
           val range = "$range"
           val syn.Generator(name, expr, guard) = generators.head
-          compile(syn.VarDef(range, None, expr, false))
-          compile(syn.VarDef(name, None, syn.Selection(syn.Id(range), "start"), true))
+          compile(syn.VarDef(Seq(range), None, expr, false))
+          compile(syn.VarDef(Seq(name), None, syn.Selection(syn.Id(range), "start"), true))
 
           val whileCond = syn.InfixExpression(syn.Id(range), "contains", syn.Id(name))
           val increment = syn.InfixExpression(syn.Id(name), "+=", syn.Selection(syn.Id(range), "step"))
