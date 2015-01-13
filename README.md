@@ -114,13 +114,13 @@ Programming language for compilers course, strongly inspired by Scala.
 ## Variable declaration
 
 ```
-var i: Int = 42             // variable i: Int
-var j      = i              // variable j with inferred type Int
-val k      = 42             // immutable value
-def l      = 42             // computed value
+var i: Int = 42                          // variable i: Int
+var j      = i                           // variable j with inferred type Int
+val k      = 42                          // immutable value
+def l      = 42                          // computed value
 ```
 <!-- ```
-lazy val m = 42             // lazy value, computed at first access *
+lazy val m = 42                          // lazy value, computed at first access *
 ``` -->
 
 ## Control flow
