@@ -201,6 +201,8 @@ includes structures like `if`, `while`, `for` and blocks.
 
 * **expression** `(` **arguments**? `)`
 
+  [*Definition resolution rules*](#definition-resolution-rules)
+
   ```
   def double(n: Int): Int =
     2 * n
@@ -221,6 +223,8 @@ includes structures like `if`, `while`, `for` and blocks.
 
 * **expression** `.` **identifier**
 
+  [*Definition resolution rules*](#definition-resolution-rules)
+
   ```
   Int.maxValue
   (42 + 5).toFloat
@@ -231,7 +235,7 @@ includes structures like `if`, `while`, `for` and blocks.
 
 * **expression** **identifier** **expression**
 
-  [*Infix expressions*](#Infix expressions)
+  [*Infix expressions*](#infix-expressions)
 
 * **expression** `=` **expression**
 
@@ -251,6 +255,8 @@ includes structures like `if`, `while`, `for` and blocks.
   of an **identifier** that will be assigned to.
 
 * **identifier**
+
+  [*Definition resolution rules*](#definition-resolution-rules)
 
   Identifiers consist of *letter identifier*s and *operator identifier*s
   that are not keywords.
