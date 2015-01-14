@@ -213,7 +213,7 @@ class AstVisitor extends FlowBaseVisitor[Ast] with OperatorPrecedence {
     IntLiteral(BigInt(context.HEXADECIMAL.getText().substring(2), 16))
 
   override def visitOctal(context: OctalContext) =
-    IntLiteral(BigInt(context.OCTAL.getText().substring(1), 8))
+    IntLiteral(BigInt(context.OCTAL.getText().substring(2), 8))
 
   override def visitBinary(context: BinaryContext) =
     IntLiteral(BigInt(context.BINARY.getText().substring(2), 2))

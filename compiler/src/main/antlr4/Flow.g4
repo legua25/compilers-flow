@@ -12,7 +12,7 @@ statement
   | complexExpression                                                           # ComplexExpressionLabel
   |                                                                             # EmptyStatement
   ;
-  
+
 memberDefinition
   : STATIC? defn                                                                # MemberDef
   | STATIC? variableDefinition                                                  # MemberVarDef
@@ -144,7 +144,7 @@ HEXADECIMAL
   ;
 
 OCTAL
-  : '0' OCTDIGIT+
+  : '0o' OCTDIGIT+
   ;
 
 BINARY
@@ -186,6 +186,6 @@ fragment IDREST           : IDSTART | DIGIT;
 fragment PREFIXOPCHAR     : '!' | '+' | '-' | '~';
 fragment OPCHAR           : [!#$%&*+\-/:<=>?@\\^_|~] | '\u00A1' .. '\u00AC' | '\u00AE' .. '\u00BF';
 
-fragment CHARELEM         : ~'\'' | CHARESCAPESEQ;
+fragment CHARELEM         : ~('\'' | '\n' | '\r') | CHARESCAPESEQ;
 fragment STRINGELEM       : ~('"' | '\n' | '\r') | CHARESCAPESEQ;
 fragment CHARESCAPESEQ    : '\\' ('b' | 't' | 'n' | 'f' | 'r' | '"' | '\'' | '\\');
