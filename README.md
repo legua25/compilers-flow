@@ -296,7 +296,7 @@ includes structures like `if`, `while`, `for` and blocks.
 ## Compilation process
 
 * The first step in the compilation process is parsing source codes, that is
-  library files found in [built-in](compiler/built-in) and the input source
+  library files found in [built-in](tree/master/compiler/built-in) and the input source
   file.
 
 * After, all type and global function definitions are declared and then defined
