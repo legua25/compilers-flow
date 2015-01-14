@@ -95,7 +95,7 @@ The full [specification](SPEC.md).
 ## Known limitations and bugs
 
 * No prefix operators yet. There are a few global functions to mimic them
-  defined in [predef.flow](compiler/built-in/predef.flow) e.g.
+  defined in [predef.flow](built-in/predef.flow) e.g.
   `def -(value: Int): Int = 0 - value`, thus instead of `-5` write `-(5)`.
 
 * No instances for custom types. Currently only type instances are created from
