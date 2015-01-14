@@ -18,7 +18,8 @@ The full [specification](SPEC.md).
   val m = readInt()
   ```
 
-* Translation of instance call or assignment to methods `apply` or `update`.
+* Translation of an instance call or an assignment to methods `apply`
+  or `update`.
 
   ```
   val array = IntArray(128)              // gets translated to
@@ -28,7 +29,7 @@ The full [specification](SPEC.md).
   ```
 
 * Translation of assignment operators (operators ending with `=`)
-  to corresponding assignment expression.
+  to the corresponding assignment expression.
 
   ```
   var a = 42
@@ -37,7 +38,7 @@ The full [specification](SPEC.md).
   ```
 
 * Translation of infix expressions to method calls. Any one argument method
-  can be used as infix operator. Operators ending with `:` are right
+  can be used as an infix operator. Operators ending with `:` are right
   associative.
 
   ```
@@ -79,7 +80,7 @@ The full [specification](SPEC.md).
   def size: Int = ...
   ```
 
-* Definition of custom type with external and/or static methods.
+* Definition of custom types with external and/or static methods.
   Instances are not supported yet as well as garbage collection.
 
 * Definition overloading. Definitions are selected based on argument types.
@@ -94,16 +95,16 @@ The full [specification](SPEC.md).
 ## Known limitations and bugs
 
 * No prefix operators yet. There are a few global functions to mimic them
-  defined in predef.flow e.g. `def -(value: Int): Int = 0 - value`, thus instead
-  of `-5` write `-(5)`.
+  defined in [predef.flow](compiler/built-in/predef.flow) e.g.
+  `def -(value: Int): Int = 0 - value`, thus instead of `-5` write `-(5)`.
 
 * No instances for custom types. Currently only type instances are created from
   built-in types.
 
 * Since `if` is an expression and there is no type hierarchy both branches must
   evaluate to the same type. Missing `else` branch evaluates to `Unit`,
-  therefore expression used as statement needs to be followed by `Unit`
-  expression `{}`. This also discourages from using expressions in place
+  therefore an expression used as a statement needs to be followed by `Unit`
+  expression like `{}`. This also discourages from using expressions in place
   of statements.
 
   ```
@@ -113,8 +114,8 @@ The full [specification](SPEC.md).
   if true then { 42; {} }                // correct
   ```
 
-* There is a bug in grammar / parser causing `while` / `for` with just
-  assignment as body to parse incorrectly, use braces to prevent it.
+* There is a bug in the grammar / parser causing `while` / `for` with just
+  an assignment as body to parse incorrectly, use braces to prevent it.
 
   instead of:
   ```
