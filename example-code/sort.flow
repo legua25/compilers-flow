@@ -68,8 +68,7 @@ for i <- 0 until n do {
   array(i) = readInt()
 }
 
-if false then insertionSort(array)
-else mergeSort(array)
+mergeSort(array)
 
 for i <- 0 until n do {
   printLine(array(i))
