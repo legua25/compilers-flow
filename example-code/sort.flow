@@ -1,7 +1,5 @@
 def insertionSort(array: IntArray): Unit = {
-  var nrOfSorted = 1
-
-  while nrOfSorted < array.size do {
+  for nrOfSorted <- 1 until array.size do {
     var i = nrOfSorted
 
     // while i > 0 && array(i - 1) > array(i) do {
@@ -13,8 +11,6 @@ def insertionSort(array: IntArray): Unit = {
 
       i -= 1
     }
-
-    nrOfSorted += 1
   }
 }
 
