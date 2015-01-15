@@ -35,8 +35,8 @@ def union(components: IntArray, a: Int, b: Int): Bool = {
   val rootOfB = getRoot(components, b)
 
   if rootOfA != rootOfB then {
-    val sizeOfA = 0 - components(rootOfA)
-    val sizeOfB = 0 - components(rootOfB)
+    val sizeOfA = -(components(rootOfA))
+    val sizeOfB = -(components(rootOfB))
     val size = sizeOfA + sizeOfB
 
     var child = a
@@ -47,7 +47,7 @@ def union(components: IntArray, a: Int, b: Int): Bool = {
       root = rootOfA
     }
 
-    components(root) = 0 - size
+    components(root) = -(size)
     compact(components, child, root)
 
     true
@@ -62,7 +62,7 @@ val n, m = readInt()
 val components = IntArray(n)
 
 for i <- 0 until n do {
-  components(i) = 0 - 1
+  components(i) = -(1)
 }
 
 for i <- 0 until m do {
